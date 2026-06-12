@@ -1,4 +1,4 @@
-﻿import sys
+import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -10,11 +10,13 @@ from backend.modules.ocr.router import router as ocr_router
 from backend.modules.trust_score.router import router as trust_score_router
 from backend.modules.scan_pipeline.router import router as scan_pipeline_router
 from backend.modules.scan_pipeline.mock_router import router as mock_router
+from backend.modules.qr_inspector.router import router as qr_inspector_router
+from backend.modules.document_scanner.router import router as document_scanner_router
 
 app = FastAPI(
     title="TrustLayer AI API",
     description="The Trust Verification Layer for Digital Payments",
-    version="0.1.0",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -30,6 +32,8 @@ app.include_router(ocr_router)
 app.include_router(trust_score_router)
 app.include_router(scan_pipeline_router)
 app.include_router(mock_router)
+app.include_router(qr_inspector_router)
+app.include_router(document_scanner_router)
 
 @app.get("/health")
 async def health_check():
@@ -778,9 +782,9 @@ async def homepage():
 
             function cleanReasonText(text) {
                 // Remove leading markdown-style bold markers like "**text**:" or "text**:"
-                let cleaned = text.replace(/^\*\*.*?\*\*:?\s*/g, '');
+                let cleaned = text.replace(/^\\*\\*.*?\\*\\*:?\\s*/g, '');
                 // Remove stray ** markers
-                cleaned = cleaned.replace(/\*\*/g, '');
+                cleaned = cleaned.replace(/\\*\\*/g, '');
                 // Remove leading "Based on..." preamble lines
                 if (cleaned.toLowerCase().startsWith('based on the provided context')) return null;
                 if (cleaned.toLowerCase().startsWith('based on the provided')) return null;

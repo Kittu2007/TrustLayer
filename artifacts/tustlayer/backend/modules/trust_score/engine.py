@@ -1,91 +1,161 @@
+"""
+TrustLayer AI – Trust Score Engine v2.0
+PRD-specified additive point formula with hard caps.
+
+Max possible = 25+20+15+15+10+8+7+5 = 105 → clamped to 100.
+Hard caps are applied AFTER additive accumulation.
+"""
+from typing import Dict, Tuple
 from backend.modules.trust_score.schemas import TrustScoreInput
+
+
+# ── Point values (PRD Section 4.1) ──────────────────────────────────────────
+POINTS = {
+    "utr_valid":         25,
+    "vpa_exists":        20,
+    "app_branding":      15,
+    "exif_clean":        15,
+    "deepfake_clean":    10,
+    "timestamp_valid":    8,
+    "amount_plausible":   7,
+    "no_replay":          5,
+}
+
+# ── Hard caps (PRD Section 4.2) — applied to final score ────────────────────
+CAP_FOREIGN_CURRENCY   = 10   # $ € £ in receipt
+CAP_UTR_FORMAT_WRONG   = 15   # UTR present but not 12 digits
+CAP_FRAUD_TEMPLATE     = 5    # Known scam pHash match > 0.80
+CAP_EXIF_EDITING       = 40   # Editing software in EXIF
+CAP_DEEPFAKE           = 25   # Deepfake score > 0.70
+CAP_VPA_NOT_EXIST      = 20   # Razorpay says VPA does not exist
+
 
 class TrustScoreEngine:
     """
-    Dynamic confidence-band scoring engine.
-    
-    Replaces rigid fixed deductions with OCR-aware weighted penalties.
-    Penalties scale based on extraction quality — a missing field from
-    a high-quality image is penalized more than one from a blurry screenshot.
-    
-    Weight Distribution:
-        UPI Transaction Logic: 28%
-        Metadata Intelligence: 22%
-        AI Visual Reasoning: 20%
-        Fraud Intelligence Match: 18%
-        Layout Validation: 12%
-    
-    Score Bands (target outputs):
-        Good screenshot (all fields, good OCR):    75–95
-        WhatsApp forward (some fields, med OCR):   60–80
-        Cropped screenshot (few fields, low qual):  50–75
-        Suspicious (fraud signals):                 20–50
-        Clearly edited (EXIF + fraud match):         0–30
+    v2.0 additive scoring engine per PRD.
+
+    Score bands (target outputs):
+        Fully verified (all green):    85–100   → LOW risk
+        Mostly authentic:              65–84    → LOW risk
+        Partial / uncertain:           40–64    → MEDIUM risk
+        Multiple red flags:            20–39    → HIGH risk
+        Clear fraud signals:            0–19    → HIGH risk
     """
-    
+
     @staticmethod
-    def calculate_base_score(data: TrustScoreInput) -> float:
-        score = 100.0
-        
-        # Derived ratios for dynamic scaling
-        field_ratio = data.fields_extracted_count / max(1, data.fields_total_count)
-        ocr_conf = data.ocr_confidence
-        
-        # --- 1. UPI Transaction Logic (max 28 points) ---
-        # Instead of flat -14 per missing field, scale by OCR confidence.
-        # Intuition: if OCR is poor, we're less certain the field is truly missing 
-        # vs. just unreadable — so the penalty is softer.
-        if not data.upi_transaction_id_valid:
-            # Base penalty 14, but reduced if OCR confidence is low (we're unsure)
-            # and increased if OCR confidence is high (field genuinely absent)
-            certainty_multiplier = 0.4 + (ocr_conf * 0.6)  # Range: 0.4 – 1.0
-            score -= 14.0 * certainty_multiplier
-            
-        if not data.payment_amount_valid:
-            certainty_multiplier = 0.4 + (ocr_conf * 0.6)
-            score -= 14.0 * certainty_multiplier
-            
-        # --- 2. Metadata Intelligence (max 22 points) ---
-        if data.metadata_anomalies_detected > 0:
-            deduction = min(22.0, data.metadata_anomalies_detected * 11.0)
-            score -= deduction
-            
-        # --- 3. AI Visual Reasoning (max 20 points) ---
-        if data.ai_visual_flags > 0:
-            deduction = min(20.0, data.ai_visual_flags * 10.0)
-            score -= deduction
-            
-        # --- 4. Fraud Intelligence Match (max 18 points) ---
-        if data.fraud_fingerprint_match:
-            score -= (18.0 * data.fraud_match_confidence)
-            
-        # --- 5. Layout Validation (max 12 points) ---
-        if data.layout_inconsistencies_detected > 0:
-            deduction = min(12.0, data.layout_inconsistencies_detected * 6.0)
-            score -= deduction
-        
-        # --- 6. Field Extraction Bonus (up to +8 points) ---
-        # Reward screenshots where OCR successfully extracted many fields.
-        # This creates natural score variability between different screenshots.
-        if field_ratio >= 0.7:
-            extraction_bonus = 8.0 * (field_ratio - 0.7) / 0.3  # 0–8 points for 70–100% fields
-            score += extraction_bonus
-        
-        # --- 7. App Detection Confidence Adjustment (up to +5 / -3 points) ---
-        # Confident app detection is a positive signal; missing app is slightly negative
-        app_conf = data.app_detection_confidence
-        if app_conf >= 0.85:
-            score += 5.0 * (app_conf - 0.85) / 0.15  # 0–5 bonus for 0.85–1.0
-        elif app_conf < 0.3:
-            score -= 3.0 * (1.0 - app_conf / 0.3)  # 0–3 penalty for <0.3
-        
-        # --- 8. Image Quality Micro-adjustment (up to ±3 points) ---
-        # High quality image: small bonus. Low quality: small penalty.
-        # This ensures identical extractions from different quality images score differently.
-        iq = data.image_quality_score
-        if iq >= 0.8:
-            score += 3.0 * (iq - 0.8) / 0.2  # 0–3 bonus
-        elif iq < 0.3:
-            score -= 3.0 * (1.0 - iq / 0.3)  # 0–3 penalty
-            
-        return max(0.0, min(100.0, round(score, 2)))
+    def calculate_base_score(data: TrustScoreInput) -> Tuple[float, Dict[str, int]]:
+        """
+        Returns (raw_additive_score, breakdown_dict).
+        Caller applies hard caps and clamps to 0–100.
+        """
+        breakdown: Dict[str, int] = {}
+
+        # 1. UTR (+25) — skip if UTR format violation
+        if data.upi_transaction_id_valid and not data.utr_format_violation and not data.utr_dummy_pattern:
+            breakdown["utr_valid"] = POINTS["utr_valid"]
+        else:
+            breakdown["utr_valid"] = 0
+
+        # 2. VPA exists in Razorpay (+20)
+        # vpa_exists_razorpay=None means unchecked (give partial credit based on handle format)
+        if data.vpa_exists_razorpay is True:
+            breakdown["vpa_exists"] = POINTS["vpa_exists"]
+        elif data.vpa_exists_razorpay is None and data.vpa_handle_valid:
+            # Partial credit when no live check but handle format is valid
+            breakdown["vpa_exists"] = POINTS["vpa_exists"] // 2  # +10
+        else:
+            breakdown["vpa_exists"] = 0
+
+        # 3. App branding match (+15)
+        breakdown["app_branding"] = POINTS["app_branding"] if data.app_branding_match else 0
+
+        # 4. EXIF clean (+15)
+        if not data.exif_editing_software and data.metadata_anomalies_detected == 0:
+            breakdown["exif_clean"] = POINTS["exif_clean"]
+        elif data.metadata_anomalies_detected <= 1 and not data.exif_editing_software:
+            breakdown["exif_clean"] = POINTS["exif_clean"] // 2  # minor noise, partial
+        else:
+            breakdown["exif_clean"] = 0
+
+        # 5. Deepfake clean (+10)
+        if not data.deepfake_detected and data.deepfake_score < 0.30:
+            breakdown["deepfake_clean"] = POINTS["deepfake_clean"]
+        elif data.deepfake_score < 0.50:
+            breakdown["deepfake_clean"] = POINTS["deepfake_clean"] // 2
+        else:
+            breakdown["deepfake_clean"] = 0
+
+        # 6. Timestamp valid (+8)
+        if data.timestamp_valid and not data.timestamp_late_night:
+            breakdown["timestamp_valid"] = POINTS["timestamp_valid"]
+        elif data.timestamp_valid:
+            breakdown["timestamp_valid"] = POINTS["timestamp_valid"] // 2  # valid but late night
+        else:
+            breakdown["timestamp_valid"] = 0
+
+        # 7. Amount plausible (+7)
+        breakdown["amount_plausible"] = POINTS["amount_plausible"] if data.amount_plausible else 0
+
+        # 8. No replay (+5)
+        breakdown["no_replay"] = POINTS["no_replay"] if not data.replay_detected else 0
+
+        raw_score = sum(breakdown.values())
+        return float(raw_score), breakdown
+
+    @staticmethod
+    def apply_hard_caps(score: float, data: TrustScoreInput) -> Tuple[float, list]:
+        """
+        Apply PRD hard caps. Returns (capped_score, list_of_triggered_caps).
+        """
+        triggered = []
+
+        if data.fraud_fingerprint_match and data.fraud_match_confidence > 0.80:
+            if score > CAP_FRAUD_TEMPLATE:
+                score = CAP_FRAUD_TEMPLATE
+                triggered.append(f"Known fraud template match ({data.fraud_match_confidence:.0%} confidence) → cap {CAP_FRAUD_TEMPLATE}")
+
+        if data.foreign_currency_detected:
+            if score > CAP_FOREIGN_CURRENCY:
+                score = CAP_FOREIGN_CURRENCY
+                triggered.append(f"Foreign currency symbol detected → cap {CAP_FOREIGN_CURRENCY}")
+
+        if data.utr_format_violation:
+            if score > CAP_UTR_FORMAT_WRONG:
+                score = CAP_UTR_FORMAT_WRONG
+                triggered.append(f"UTR format invalid (not 12 digits) → cap {CAP_UTR_FORMAT_WRONG}")
+
+        if data.exif_editing_software:
+            if score > CAP_EXIF_EDITING:
+                score = CAP_EXIF_EDITING
+                triggered.append(f"Editing software in EXIF ({data.exif_software_name or 'unknown'}) → cap {CAP_EXIF_EDITING}")
+
+        if data.deepfake_score > 0.70:
+            if score > CAP_DEEPFAKE:
+                score = CAP_DEEPFAKE
+                triggered.append(f"Deepfake probability {data.deepfake_score:.0%} → cap {CAP_DEEPFAKE}")
+
+        if data.vpa_exists_razorpay is False:
+            if score > CAP_VPA_NOT_EXIST:
+                score = CAP_VPA_NOT_EXIST
+                triggered.append(f"VPA does not exist per Razorpay lookup → cap {CAP_VPA_NOT_EXIST}")
+
+        return score, triggered
+
+    @classmethod
+    def calculate(cls, data: TrustScoreInput) -> Tuple[float, Dict[str, int], list]:
+        """
+        Full calculation. Returns (final_score_0_100, breakdown, triggered_caps).
+        """
+        raw_score, breakdown = cls.calculate_base_score(data)
+        capped_score, caps_triggered = cls.apply_hard_caps(raw_score, data)
+        final = max(0.0, min(100.0, round(capped_score, 2)))
+        return final, breakdown, caps_triggered
+
+    @classmethod
+    def calculate_base_score_compat(cls, data: TrustScoreInput) -> float:
+        """
+        Backward-compat shim used by the old service layer.
+        Returns just the final score (after caps).
+        """
+        final, _, _ = cls.calculate(data)
+        return final
