@@ -1,21 +1,76 @@
 """
-TrustLayer AI – Document Scanner Engine v2.0
+TrustLayer AI – Document Scanner Engine v2.1
 Analyzes images and PDFs for:
   - Steganography (LSB noise analysis via numpy)
-  - Embedded URLs / phishing links
+  - Embedded URLs / phishing links (with brand impersonation + TLD analysis)
   - PDF JavaScript / auto-actions
   - Embedded files
 """
 import io
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Optional
+from urllib.parse import urlparse
 
 
-PHISHING_PATTERNS = [
-    r'bit\.ly', r'tinyurl\.com', r'goo\.gl', r't\.co',
-    r'upi-verify', r'kyc-update', r'bank-login', r'account-verify',
-    r'paytm-secure', r'phonepe-support', r'gpay-help',
-    r'reward-claim', r'cashback-offer', r'lucky-winner',
+# ── Suspicious TLDs commonly used in phishing ─────────────────────────────────
+SUSPICIOUS_TLDS = {
+    ".xyz", ".tk", ".ml", ".ga", ".cf", ".gq", ".top", ".buzz", ".club",
+    ".work", ".icu", ".fun", ".monster", ".rest", ".cam", ".surf", ".click",
+    ".link", ".live", ".wang", ".site", ".online", ".space", ".store",
+    ".quest", ".cfd", ".sbs", ".uno", ".best", ".lol", ".hair",
+}
+
+# ── URL shorteners (always suspicious in financial docs) ──────────────────────
+URL_SHORTENERS = {
+    "bit.ly", "tinyurl.com", "goo.gl", "t.co", "is.gd", "v.gd",
+    "ow.ly", "buff.ly", "adf.ly", "cutt.ly", "rb.gy", "shorturl.at",
+    "tiny.cc", "lnkd.in", "surl.li", "rebrand.ly",
+}
+
+# ── Indian bank & payment brands (for impersonation detection) ────────────────
+INDIAN_BRAND_KEYWORDS = {
+    "sbi", "hdfc", "icici", "axis", "kotak", "pnb", "bob", "canara",
+    "union", "idbi", "rbl", "federal", "indusind", "bandhan", "yes",
+    "paytm", "phonepe", "googlepay", "gpay", "bhim", "cred", "fampay",
+    "razorpay", "bharatpe", "mobikwik", "freecharge", "airtel",
+    "jio", "npci", "upi", "neft", "imps", "rtgs",
+    "aadhaar", "aadhar", "pan", "kyc",
+}
+
+# ── Official domains whitelist (never flag these) ─────────────────────────────
+OFFICIAL_DOMAINS = {
+    # Banks
+    "sbi.co.in", "onlinesbi.sbi", "retail.onlinesbi.sbi",
+    "hdfcbank.com", "netbanking.hdfcbank.com",
+    "icicibank.com", "infinity.icicibank.com",
+    "axisbank.com", "omni.axisbank.com",
+    "kotak.com", "netbanking.kotak.com",
+    "pnbindia.in", "onlinebanking.pnbindia.in",
+    "bankofbaroda.in", "bfrbl.bankofbaroda.in",
+    "canarabank.com", "unionbankofindia.co.in",
+    "idbibank.in", "rblbank.com", "federalbank.co.in",
+    "indusind.com", "bandhanbank.com", "yesbank.in",
+    # Payment apps
+    "paytm.com", "phonepe.com", "pay.google.com",
+    "bhimupi.org.in", "cred.club", "razorpay.com",
+    "fampay.in", "mobikwik.com", "freecharge.in",
+    "bharatpe.com", "airtel.in", "jio.com",
+    # Government / regulatory
+    "npci.org.in", "uidai.gov.in", "incometaxindia.gov.in",
+    "rbi.org.in", "cybercrime.gov.in",
+    # Common legitimate
+    "google.com", "microsoft.com", "apple.com",
+}
+
+# ── Phishing keyword patterns in URL path/subdomain ──────────────────────────
+PHISHING_PATH_PATTERNS = [
+    r'upi[_-]?verify', r'kyc[_-]?update', r'kyc[_-]?verify',
+    r'bank[_-]?login', r'account[_-]?verify', r'account[_-]?update',
+    r'paytm[_-]?secure', r'phonepe[_-]?support', r'gpay[_-]?help',
+    r'reward[_-]?claim', r'cashback[_-]?offer', r'lucky[_-]?winner',
+    r'free[_-]?recharge', r'loan[_-]?approve', r'otp[_-]?verify',
+    r'card[_-]?block', r'card[_-]?unblock', r'suspend',
+    r'refund[_-]?process', r'claim[_-]?amount',
     r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}',  # Raw IP addresses
 ]
 
@@ -29,9 +84,109 @@ def _extract_urls_from_text(text: str) -> List[str]:
     return URL_REGEX.findall(text or "")
 
 
-def _is_suspicious_url(url: str) -> bool:
+def _get_domain(url: str) -> str:
+    """Extract the registrable domain from a URL."""
+    try:
+        parsed = urlparse(url if "://" in url else f"https://{url}")
+        host = (parsed.hostname or "").lower().strip(".")
+        return host
+    except Exception:
+        return ""
+
+
+def _get_tld(domain: str) -> str:
+    """Extract TLD (last dot-segment) from a domain."""
+    parts = domain.rsplit(".", 1)
+    if len(parts) == 2:
+        return f".{parts[1]}"
+    return ""
+
+
+def _is_official_domain(domain: str) -> bool:
+    """Check if domain or its parent is in the official whitelist."""
+    if domain in OFFICIAL_DOMAINS:
+        return True
+    # Check parent: e.g. "netbanking.hdfcbank.com" → "hdfcbank.com"
+    parts = domain.split(".")
+    for i in range(1, len(parts)):
+        parent = ".".join(parts[i:])
+        if parent in OFFICIAL_DOMAINS:
+            return True
+    return False
+
+
+def _analyze_url(url: str) -> Dict:
+    """
+    Deep analysis of a single URL. Returns risk classification with reasons.
+    """
     lower = url.lower()
-    return any(re.search(p, lower) for p in PHISHING_PATTERNS)
+    domain = _get_domain(url)
+    tld = _get_tld(domain)
+    reasons = []
+    risk = "SAFE"
+
+    # 1. Skip official domains immediately
+    if _is_official_domain(domain):
+        return {"url": url, "risk": "SAFE", "reasons": ["Official/known domain"]}
+
+    # 2. URL shorteners — always suspicious in financial context
+    if domain in URL_SHORTENERS or any(domain.endswith(f".{s}") for s in URL_SHORTENERS):
+        reasons.append(f"URL shortener ({domain}) — hides real destination")
+        risk = "HIGH"
+
+    # 3. Suspicious TLD
+    if tld in SUSPICIOUS_TLDS:
+        reasons.append(f"Suspicious TLD '{tld}' commonly used in phishing")
+        risk = "HIGH"
+
+    # 4. Brand impersonation — domain contains a bank/payment brand but isn't official
+    for brand in INDIAN_BRAND_KEYWORDS:
+        if brand in domain and not _is_official_domain(domain):
+            reasons.append(f"Domain contains brand '{brand}' but is not an official domain")
+            risk = "HIGH"
+            break
+
+    # 5. Phishing path/subdomain keywords
+    for pattern in PHISHING_PATH_PATTERNS:
+        if re.search(pattern, lower):
+            reasons.append(f"Phishing keyword pattern detected in URL")
+            risk = "HIGH"
+            break
+
+    # 6. Raw IP address
+    if re.match(r'https?://\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}', lower):
+        reasons.append("URL uses raw IP address instead of domain name")
+        risk = "HIGH"
+
+    # 7. Excessive subdomains (more than 3 dots in domain)
+    if domain.count(".") >= 3:
+        reasons.append(f"Excessive subdomains in domain ({domain})")
+        if risk != "HIGH":
+            risk = "MEDIUM"
+
+    # 8. Homoglyph / typosquatting patterns
+    typo_patterns = [
+        (r'sbl\.', 'sbi'), (r'hdtc', 'hdfc'), (r'1cici', 'icici'),
+        (r'ax1s', 'axis'), (r'paytrn', 'paytm'), (r'ph0nepe', 'phonepe'),
+        (r'g00gle', 'google'), (r'amaz0n', 'amazon'),
+    ]
+    for pattern, brand in typo_patterns:
+        if re.search(pattern, domain):
+            reasons.append(f"Possible typosquatting of '{brand}'")
+            risk = "HIGH"
+            break
+
+    # 9. If no signals found, mark as SAFE
+    if not reasons:
+        reasons.append("No suspicious indicators detected")
+
+    return {"url": url, "risk": risk, "reasons": reasons}
+
+
+def _is_suspicious_url(url: str) -> bool:
+    """Quick check — returns True if URL has any risk signal."""
+    result = _analyze_url(url)
+    return result["risk"] in ("HIGH", "MEDIUM")
 
 
 class DocumentScannerEngine:
@@ -90,13 +245,15 @@ class DocumentScannerEngine:
         except Exception:
             pass
 
-        suspicious = [u for u in urls if _is_suspicious_url(u)]
+        url_analysis = [_analyze_url(u) for u in urls]
+        suspicious = [a["url"] for a in url_analysis if a["risk"] in ("HIGH", "MEDIUM")]
         return {
             "document_type": "image",
             "steganography_suspected": stego_suspected,
             "steganography_signals": signals,
             "urls_found": urls,
             "suspicious_urls": suspicious,
+            "url_analysis": url_analysis,
             "embedded_files_found": False,
             "embedded_file_count": 0,
             "pdf_javascript_found": False,
@@ -148,7 +305,8 @@ class DocumentScannerEngine:
             print(f"[DOC-SCANNER] PDF analysis error: {e}")
             signals.append(f"PDF analysis error: {str(e)[:80]}")
 
-        suspicious = [u for u in urls if _is_suspicious_url(u)]
+        url_analysis = [_analyze_url(u) for u in urls[:20]]
+        suspicious = [a["url"] for a in url_analysis if a["risk"] in ("HIGH", "MEDIUM")]
         return {
             "document_type": "pdf",
             "page_count": page_count,
@@ -156,6 +314,7 @@ class DocumentScannerEngine:
             "steganography_signals": [],
             "urls_found": urls[:20],
             "suspicious_urls": suspicious[:10],
+            "url_analysis": url_analysis,
             "embedded_files_found": embedded_files,
             "embedded_file_count": embedded_count,
             "pdf_javascript_found": js_found,

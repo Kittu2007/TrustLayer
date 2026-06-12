@@ -15,6 +15,7 @@ class DocumentThreatResult(BaseModel):
     urls_found: List[str] = Field(default_factory=list)
     suspicious_urls: List[str] = Field(default_factory=list)
     url_risk_level: str = "UNKNOWN"
+    url_analysis: List[dict] = Field(default_factory=list, description="Per-URL risk analysis with reasons")
 
     # Embedded file threats
     embedded_files_found: bool = False

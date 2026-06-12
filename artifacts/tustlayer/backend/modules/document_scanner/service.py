@@ -20,9 +20,14 @@ class DocumentScannerService:
 
             risk_signals = list(raw.get("steganography_signals", []))
 
+            # Per-URL analysis with reasons
+            url_analysis = raw.get("url_analysis", [])
             if raw.get("suspicious_urls"):
-                for url in raw["suspicious_urls"]:
-                    risk_signals.append(f"Suspicious URL: {url[:80]}")
+                for analysis in url_analysis:
+                    if analysis.get("risk") in ("HIGH", "MEDIUM"):
+                        url_str = analysis["url"][:80]
+                        reasons_str = "; ".join(analysis.get("reasons", []))
+                        risk_signals.append(f"⚠ {url_str} — {reasons_str}")
 
             if raw.get("pdf_javascript_found"):
                 risk_signals.append("JavaScript found in PDF")
@@ -31,15 +36,19 @@ class DocumentScannerService:
             if raw.get("embedded_files_found"):
                 risk_signals.append(f"{raw['embedded_file_count']} embedded file(s) in PDF")
 
-            # Determine risk level
+            # Determine risk level — use url_analysis for more granular detection
+            has_high_risk_urls = any(a.get("risk") == "HIGH" for a in url_analysis)
+            has_medium_risk_urls = any(a.get("risk") == "MEDIUM" for a in url_analysis)
+
             critical = (
                 raw.get("steganography_suspected")
                 or raw.get("pdf_javascript_found")
                 or raw.get("pdf_auto_action_found")
-                or len(raw.get("suspicious_urls", [])) >= 2
+                or (has_high_risk_urls and len(raw.get("suspicious_urls", [])) >= 2)
             )
             medium = (
-                len(raw.get("suspicious_urls", [])) >= 1
+                has_high_risk_urls
+                or has_medium_risk_urls
                 or raw.get("embedded_files_found")
             )
 
@@ -49,6 +58,16 @@ class DocumentScannerService:
                 risk_level = "MEDIUM"
             else:
                 risk_level = "LOW"
+
+            # URL risk level: HIGH if any HIGH-risk URL, MEDIUM if any MEDIUM
+            if has_high_risk_urls:
+                url_risk = "HIGH"
+            elif has_medium_risk_urls:
+                url_risk = "MEDIUM"
+            elif url_analysis:
+                url_risk = "LOW"
+            else:
+                url_risk = "NONE"
 
             doc_type = raw.get("document_type", "unknown")
             pages = raw.get("page_count", 0)
@@ -67,7 +86,8 @@ class DocumentScannerService:
                 steganography_signals=raw.get("steganography_signals", []),
                 urls_found=raw.get("urls_found", []),
                 suspicious_urls=raw.get("suspicious_urls", []),
-                url_risk_level="HIGH" if raw.get("suspicious_urls") else "LOW",
+                url_risk_level=url_risk,
+                url_analysis=url_analysis,
                 embedded_files_found=raw.get("embedded_files_found", False),
                 embedded_file_count=raw.get("embedded_file_count", 0),
                 pdf_javascript_found=raw.get("pdf_javascript_found", False),

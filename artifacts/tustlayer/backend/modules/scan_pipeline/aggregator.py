@@ -66,14 +66,52 @@ def _validate_vpa_handle(upi_id: Optional[str]) -> bool:
     return any(lower.endswith(handle) for handle in VALID_UPI_HANDLES)
 
 
-def _validate_utr(utr: Optional[str]) -> tuple[bool, bool, bool]:
-    """Returns (is_valid_format, format_violation, dummy_pattern)."""
+def _extract_upi_utr_from_text(raw_text: Optional[str]) -> Optional[str]:
+    """Try to find a 12-digit UPI transaction ID from raw OCR text."""
+    if not raw_text:
+        return None
+    # Look for "UPI transaction ID" label followed by a 12-digit number
+    m = re.search(r'(?:UPI\s+transaction\s+ID|UTR|Ref\s*(?:No|ID|erence)?)\s*[:\-]?\s*(\d{12})\b', raw_text, re.IGNORECASE)
+    if m:
+        return m.group(1)
+    # Fallback: find any standalone 12-digit number
+    candidates = re.findall(r'\b(\d{12})\b', raw_text)
+    if len(candidates) == 1:
+        return candidates[0]
+    return None
+
+
+def _validate_utr(utr: Optional[str], raw_text: Optional[str] = None) -> tuple[bool, bool, bool, Optional[str]]:
+    """
+    Returns (is_valid_format, format_violation, dummy_pattern, resolved_utr).
+
+    Key distinction:
+    - Alphanumeric strings (e.g. Google transaction ID 'CICAgNjJrf3sNg') are
+      app-internal IDs, NOT UTR format violations. We try to recover the real
+      12-digit UPI UTR from raw_text instead.
+    - Only all-digit strings that aren't 12 digits are true format violations.
+    """
     if not utr:
-        return False, False, False
-    is_valid = len(utr) == 12 and utr.isdigit()
-    format_violation = bool(utr) and not is_valid
-    dummy = utr in DUMMY_UTR_PATTERNS or (utr.isdigit() and len(set(utr)) == 1)
-    return is_valid, format_violation, dummy
+        return False, False, False, None
+
+    # If it's a valid 12-digit numeric UTR, accept it
+    if len(utr) == 12 and utr.isdigit():
+        dummy = utr in DUMMY_UTR_PATTERNS or len(set(utr)) == 1
+        return True, False, dummy, utr
+
+    # If it contains non-digit characters, it's an app-internal ID (NOT a UTR violation)
+    # Try to recover the real UTR from raw text
+    if not utr.isdigit():
+        recovered = _extract_upi_utr_from_text(raw_text)
+        if recovered:
+            dummy = recovered in DUMMY_UTR_PATTERNS or len(set(recovered)) == 1
+            return True, False, dummy, recovered
+        # No recovery possible — treat as missing UTR, NOT a format violation
+        return False, False, False, None
+
+    # All-digit but wrong length — genuine format violation
+    dummy = utr in DUMMY_UTR_PATTERNS or len(set(utr)) == 1
+    return False, True, dummy, utr
 
 
 def _detect_foreign_currency(raw_text: Optional[str], amount: Optional[str]) -> bool:
@@ -98,17 +136,27 @@ def _validate_timestamp(timestamp: Optional[str]) -> tuple[bool, bool]:
     if not timestamp:
         return True, False  # Missing timestamp: don't penalize
     ts_lower = timestamp.lower()
-    # Check for hour patterns suggesting late-night (0-5 AM)
-    late_night_patterns = [
-        r'\b0[0-5]:\d{2}',   # 00:xx - 05:xx
-        r'\b12:[0-5]\d\s*am', # 12:xx AM
-        r'\b1:[0-5]\d\s*am',
-        r'\b2:[0-5]\d\s*am',
-        r'\b3:[0-5]\d\s*am',
-        r'\b4:[0-5]\d\s*am',
-        r'\b5:[0-5]\d\s*am',
+
+    # If "pm" is anywhere in the timestamp, it's NOT late night (afternoon/evening)
+    if re.search(r'\bpm\b|p\.m\.', ts_lower):
+        return True, False
+
+    # Check for 24-hour format late night (00:00 - 05:59)
+    if re.search(r'\b0[0-5]:\d{2}\b', ts_lower):
+        # Make sure it's not followed by 'pm'
+        if not re.search(r'\b0[0-5]:\d{2}\s*pm', ts_lower):
+            return True, True
+
+    # Check for 12-hour format late night (12:xx AM, 1-5:xx AM) — require AM explicitly
+    late_night_12h = [
+        r'\b12:[0-5]\d\s+am\b',  # 12:xx AM
+        r'\b1:[0-5]\d\s+am\b',   # 1:xx AM
+        r'\b2:[0-5]\d\s+am\b',   # 2:xx AM
+        r'\b3:[0-5]\d\s+am\b',   # 3:xx AM
+        r'\b4:[0-5]\d\s+am\b',   # 4:xx AM
+        r'\b5:[0-5]\d\s+am\b',   # 5:xx AM
     ]
-    late_night = any(re.search(p, ts_lower) for p in late_night_patterns)
+    late_night = any(re.search(p, ts_lower) for p in late_night_12h)
     return True, late_night
 
 
@@ -134,8 +182,8 @@ class ResultAggregator:
         upi_id = ocr.fields.upi_id
         amount = ocr.fields.payment_amount
 
-        # ── UTR validation ────────────────────────────────────────────────────
-        utr_valid, utr_format_violation, utr_dummy = _validate_utr(utr)
+        # ── UTR validation (smart: distinguishes app IDs from real UTRs) ───────
+        utr_valid, utr_format_violation, utr_dummy, resolved_utr = _validate_utr(utr, raw_text)
 
         # ── VPA validation ────────────────────────────────────────────────────
         vpa_handle_valid = _validate_vpa_handle(upi_id)
