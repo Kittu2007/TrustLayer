@@ -10,13 +10,9 @@ const nextConfig: NextConfig = {
         },
       ];
     }
-    return [
-      {
-        source: "/api/:path*",
-        destination: "https://trustlayerai.vercel.app/api/:path*",
-      },
-    ];
+    return [];
   },
 };
 
 export default nextConfig;
+
