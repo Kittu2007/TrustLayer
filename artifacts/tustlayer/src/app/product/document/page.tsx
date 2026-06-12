@@ -3,6 +3,12 @@
 import { ChangeEvent, DragEvent, useRef, useState } from "react";
 import Link from "next/link";
 
+type UrlAnalysis = {
+  url: string;
+  risk: "SAFE" | "MEDIUM" | "HIGH";
+  reasons: string[];
+};
+
 type DocResult = {
   success: boolean;
   document_type: string;
@@ -12,6 +18,7 @@ type DocResult = {
   urls_found: string[];
   suspicious_urls: string[];
   url_risk_level: string;
+  url_analysis: UrlAnalysis[];
   embedded_files_found: boolean;
   embedded_file_count: number;
   pdf_javascript_found: boolean;
@@ -40,6 +47,57 @@ function RiskLevel({ level }: { level: string }) {
       <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: s.color, boxShadow: `0 0 6px ${s.color}` }} />
       {level} RISK
     </span>
+  );
+}
+
+function UrlVerdictCard({ analysis }: { analysis: UrlAnalysis }) {
+  const riskConfig = {
+    SAFE:   { icon: "✓", label: "Safe",       color: "#31f58b", bg: "rgba(49,245,139,0.05)",  border: "rgba(49,245,139,0.15)" },
+    MEDIUM: { icon: "⚠", label: "Suspicious", color: "#ffb22e", bg: "rgba(255,178,46,0.06)",  border: "rgba(255,178,46,0.2)" },
+    HIGH:   { icon: "✕", label: "Dangerous",  color: "#ff4d2e", bg: "rgba(255,77,46,0.07)",   border: "rgba(255,77,46,0.22)" },
+  };
+  const cfg = riskConfig[analysis.risk] ?? riskConfig.MEDIUM;
+
+  return (
+    <div style={{
+      padding: "10px 12px", borderRadius: "10px", fontSize: "0.72rem",
+      background: cfg.bg, border: `1px solid ${cfg.border}`,
+      display: "flex", flexDirection: "column", gap: "6px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <span style={{
+          width: "22px", height: "22px", borderRadius: "50%", display: "flex",
+          alignItems: "center", justifyContent: "center", fontSize: "0.68rem",
+          fontWeight: 900, background: `${cfg.color}22`, color: cfg.color,
+          border: `1.5px solid ${cfg.color}55`, flexShrink: 0,
+        }}>{cfg.icon}</span>
+        <span style={{
+          fontFamily: "var(--font-mono)", wordBreak: "break-all",
+          color: analysis.risk === "SAFE" ? "var(--foreground-muted)" : cfg.color,
+          flex: 1, lineHeight: 1.4,
+        }}>{analysis.url}</span>
+        <span style={{
+          padding: "2px 8px", borderRadius: "6px", fontSize: "0.6rem",
+          fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase",
+          background: `${cfg.color}18`, color: cfg.color, flexShrink: 0,
+          border: `1px solid ${cfg.color}33`,
+        }}>{cfg.label}</span>
+      </div>
+      {analysis.reasons && analysis.reasons.length > 0 && (
+        <div style={{
+          paddingLeft: "30px", display: "flex", flexDirection: "column", gap: "3px",
+        }}>
+          {analysis.reasons.map((reason, i) => (
+            <span key={i} style={{
+              fontSize: "0.65rem", color: analysis.risk === "SAFE" ? "var(--foreground-dim)" : `${cfg.color}cc`,
+              lineHeight: 1.5,
+            }}>
+              {analysis.risk !== "SAFE" ? "→ " : "• "}{reason}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -85,6 +143,14 @@ export default function DocumentScannerPage() {
   };
 
   const docIcon = file?.type === "application/pdf" ? "📄" : "🖼️";
+
+  // Derive URL analysis — use backend data or fallback to simple list
+  const urlAnalysis: UrlAnalysis[] = result?.url_analysis ?? 
+    (result?.urls_found ?? []).map(url => ({
+      url,
+      risk: (result?.suspicious_urls ?? []).includes(url) ? "HIGH" as const : "SAFE" as const,
+      reasons: (result?.suspicious_urls ?? []).includes(url) ? ["Matched suspicious pattern"] : ["No issues detected"],
+    }));
 
   return (
     <div className="product-page">
@@ -151,7 +217,8 @@ export default function DocumentScannerPage() {
                 <li>PDF embedded file scanning</li>
                 <li>JavaScript injection in PDFs</li>
                 <li>Auto-action / launch triggers</li>
-                <li>URL extraction &amp; risk scoring</li>
+                <li>URL extraction &amp; phishing verification</li>
+                <li>Brand impersonation &amp; suspicious TLD detection</li>
                 <li>Pixel-level anomaly analysis</li>
               </ul>
             </div>
@@ -180,7 +247,7 @@ export default function DocumentScannerPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
                 {["Analysing pixel entropy for steganographic signatures...",
                   "Parsing document structure and embedded objects...",
-                  "Extracting and scoring URLs found in document..."].map((msg, i) => (
+                  "Verifying URLs against phishing and brand impersonation databases..."].map((msg, i) => (
                   <div key={i} className="scanning-step active" style={{ opacity: 1 }}>
                     <span className="scanning-spinner" />
                     <div className="step-content"><p style={{ margin: 0 }}>{msg}</p></div>
@@ -219,7 +286,9 @@ export default function DocumentScannerPage() {
                 ] .map(([label, value]) => (
                   <div className="result-row" key={label}>
                     <span className="label">{label}</span>
-                    <span className="value">{value}</span>
+                    <span className="value" style={{
+                      color: value === "HIGH" ? "#ff4d2e" : value === "MEDIUM" ? "#ffb22e" : undefined
+                    }}>{value}</span>
                   </div>
                 ))}
               </div>
@@ -270,29 +339,17 @@ export default function DocumentScannerPage() {
                 </div>
               )}
 
-              {/* URLs Found */}
-              {result.urls_found.length > 0 && (
+              {/* URL Verification — Per-URL verdicts */}
+              {urlAnalysis.length > 0 && (
                 <div className="result-block">
-                  <h4 className="result-block-title">URLs Extracted ({result.urls_found.length})</h4>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "8px" }}>
-                    {result.urls_found.slice(0, 8).map((url, i) => {
-                      const isSuspicious = result.suspicious_urls.includes(url);
-                      return (
-                        <div key={i} style={{
-                          padding: "6px 10px", borderRadius: "8px", fontSize: "0.68rem",
-                          fontFamily: "var(--font-mono)", wordBreak: "break-all",
-                          background: isSuspicious ? "rgba(255,77,46,0.06)" : "rgba(255,248,238,0.02)",
-                          border: isSuspicious ? "1px solid rgba(255,77,46,0.2)" : "1px solid var(--border)",
-                          color: isSuspicious ? "#ff9466" : "var(--foreground-muted)",
-                        }}>
-                          {isSuspicious && <span style={{ marginRight: "6px", color: "#ff4d2e" }}>⚠</span>}
-                          {url}
-                        </div>
-                      );
-                    })}
-                    {result.urls_found.length > 8 && (
+                  <h4 className="result-block-title">URL Verification ({urlAnalysis.length})</h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "10px" }}>
+                    {urlAnalysis.slice(0, 10).map((analysis, i) => (
+                      <UrlVerdictCard key={i} analysis={analysis} />
+                    ))}
+                    {urlAnalysis.length > 10 && (
                       <p style={{ fontSize: "0.72rem", color: "var(--foreground-dim)", margin: "4px 0 0", textAlign: "center" }}>
-                        +{result.urls_found.length - 8} more URLs not shown
+                        +{urlAnalysis.length - 10} more URLs not shown
                       </p>
                     )}
                   </div>
@@ -323,3 +380,4 @@ export default function DocumentScannerPage() {
     </div>
   );
 }
+
