@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
         destination: "https://trustlayerai.vercel.app/api/:path*",
       },
     ];
+  },
 };
 
 export default nextConfig;
