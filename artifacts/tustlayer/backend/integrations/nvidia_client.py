@@ -240,28 +240,33 @@ class NemotronNano12BVLProvider:
         }
 
 
-# ─── HiveDeepfakeDetector (hive/deepfake-image-detection) ───────────────────
+# ─── Deepfake / AI-Generation Detector ─────────────────────────────────────
 
 class HiveDeepfakeDetector:
     """
-    Uses hive/deepfake-image-detection via NVIDIA NIM.
+    Deepfake / AI-generation detector using NVIDIA NIM vision model.
     Returns deepfake probability score 0.0–1.0.
+    Falls back gracefully to neutral result (0.0 probability) on any error.
     """
 
     SYSTEM_PROMPT = (
-        "You are a deepfake image detection model. Analyze the provided image and return ONLY a JSON object "
-        "with the following fields: "
-        "{\"deepfake_probability\": 0.0-1.0, \"is_deepfake\": bool, \"manipulation_type\": \"string\", \"signals\": [\"...\"]}"
-        " where manipulation_type is one of: none, face_swap, image_generation, splicing, enhancement, unknown."
+        "You are an image forensics expert. Analyze the provided image for signs of AI generation, "
+        "deepfake manipulation, face swapping, splicing, or digital enhancement. "
+        "Return ONLY a JSON object with these fields: "
+        "{\"deepfake_probability\": 0.0-1.0, \"is_deepfake\": bool, \"manipulation_type\": \"string\", \"signals\": [\"...\"]} "
+        "where manipulation_type is one of: none, face_swap, image_generation, splicing, enhancement, unknown. "
+        "For UPI payment screenshots, focus on pixel-level anomalies, inconsistent rendering, "
+        "and signs of image editing. Most genuine screenshots will have probability < 0.1."
     )
 
     def __init__(self):
         self.api_url = f"{settings.NVIDIA_BASE_URL}/chat/completions"
-        self.model = settings.DEEPFAKE_MODEL
-        self.client = httpx.AsyncClient(timeout=30.0)
+        # Use Nemotron VL model (confirmed working on chat/completions)
+        self.model = settings.VISUAL_AI_MODEL
+        self.client = httpx.AsyncClient(timeout=25.0)
 
     @retry(
-        stop=stop_after_attempt(2),
+        stop=stop_after_attempt(1),
         wait=wait_exponential(multiplier=1, min=2, max=8),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
         reraise=True
@@ -277,7 +282,7 @@ class HiveDeepfakeDetector:
             "messages": [
                 {"role": "system", "content": self.SYSTEM_PROMPT},
                 {"role": "user", "content": [
-                    {"type": "text", "text": "Analyze this image for deepfake or AI-generation artifacts."},
+                    {"type": "text", "text": "Analyze this image for deepfake or AI-generation artifacts. Return ONLY the JSON object."},
                     {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
                 ]}
             ],
@@ -294,13 +299,13 @@ class HiveDeepfakeDetector:
             response.raise_for_status()
             elapsed = int((time.time() - start) * 1000)
             content = response.json()["choices"][0]["message"]["content"]
-            print(f"[HIVE-DEEPFAKE] Detection completed in {elapsed}ms: {content[:120]}")
+            print(f"[DEEPFAKE-DETECT] Detection completed in {elapsed}ms: {content[:120]}")
             parsed = _extract_json_from_content(content)
             if parsed and "deepfake_probability" in parsed:
                 return parsed
             return {"deepfake_probability": 0.0, "is_deepfake": False, "manipulation_type": "unknown", "signals": []}
         except Exception as e:
-            print(f"[HIVE-DEEPFAKE] Detection failed: {e}. Using neutral result.")
+            print(f"[DEEPFAKE-DETECT] Detection failed: {e}. Using neutral result.")
             return {"deepfake_probability": 0.0, "is_deepfake": False, "manipulation_type": "unknown", "signals": [], "error": str(e)}
 
 
@@ -312,11 +317,11 @@ class QwenReasoningProvider(ReasoningProvider):
     def __init__(self):
         self.api_url = f"{settings.NVIDIA_BASE_URL}/chat/completions"
         self.model = settings.QWEN_MODEL
-        self.client = httpx.AsyncClient(timeout=45.0)
+        self.client = httpx.AsyncClient(timeout=30.0)
 
     @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
+        stop=stop_after_attempt(2),
+        wait=wait_exponential(multiplier=1, min=2, max=8),
         retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
         reraise=True
     )

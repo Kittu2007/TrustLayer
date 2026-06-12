@@ -32,8 +32,8 @@ class AppForensicsService:
                 layout_consistency="LOW",
                 font_consistency="UNKNOWN",
                 suspected_clone=False,
-                authenticity_score=0.5,
-                explanation="Deterministic analysis failed.",
+                app_authenticity_score=0.5,
+                forensic_explanation="Deterministic analysis failed.",
             )
 
         if isinstance(ai_branding, Exception) or not ai_branding:
@@ -45,24 +45,24 @@ class AppForensicsService:
             ai_app = ai_branding.get("app_name", "")
             ai_explanation = ai_branding.get("explanation", "")
 
-            blended_score = deterministic_result.authenticity_score * 0.65 + ai_confidence * 0.35
+            blended_score = deterministic_result.app_authenticity_score * 0.65 + ai_confidence * 0.35
 
             if not ai_match:
                 blended_score = min(blended_score, 0.70)
                 deterministic_result.suspected_clone = True
                 deterministic_result.layout_consistency = "LOW"
 
-            deterministic_result.authenticity_score = round(blended_score, 3)
+            deterministic_result.app_authenticity_score = round(blended_score, 3)
 
             if ai_app and ai_app != "Unknown" and deterministic_result.detected_app == "Unknown":
                 deterministic_result.detected_app = ai_app
 
             if ai_explanation:
-                deterministic_result.explanation = (
-                    f"{deterministic_result.explanation} [AI: {ai_explanation}]"
+                deterministic_result.forensic_explanation = (
+                    f"{deterministic_result.forensic_explanation} [AI: {ai_explanation}]"
                 )
 
-            print(f"[APP-FORENSICS] Dual-validated — deterministic+AI blended score: {deterministic_result.authenticity_score:.2f}")
+            print(f"[APP-FORENSICS] Dual-validated — deterministic+AI blended score: {deterministic_result.app_authenticity_score:.2f}")
         except Exception as e:
             print(f"[APP-FORENSICS] AI blend failed (using deterministic only): {e}")
 

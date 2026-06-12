@@ -2,6 +2,7 @@
 TrustLayer AI – Trust Score Service v2.0
 Orchestrates the full deterministic + AI reasoning pipeline.
 """
+import asyncio
 from backend.modules.trust_score.schemas import TrustScoreInput, TrustScoreResult
 from backend.modules.trust_score.engine import TrustScoreEngine
 from backend.modules.trust_score.escalation import RiskEscalationLayer
@@ -35,14 +36,28 @@ class FinalDecisionAssembler:
         # 3. Extraction quality label
         extraction_label = RiskEscalationLayer._compute_extraction_quality_label(data)
 
-        # 4. AI reasoning (Qwen 397B → Phi fallback)
-        reasons = await self.reasoning.generate_reasons(data)
-        actions = await self.recommendations.generate_recommendations(risk_level, data)
+        # 4. AI reasoning — run ALL 3 calls in parallel (prevents 300s Vercel timeout)
+        reasons_task = self.reasoning.generate_reasons(data)
+        actions_task = self.recommendations.generate_recommendations(risk_level, data)
+        what_to_do_task = self.qwen.generate_what_to_do_next(risk_level.value, data.model_dump())
 
-        # 5. "What To Do Next" (Qwen generates user-facing guidance)
-        what_to_do = await self.qwen.generate_what_to_do_next(risk_level.value, data.model_dump())
+        reasons, actions, what_to_do = await asyncio.gather(
+            reasons_task, actions_task, what_to_do_task,
+            return_exceptions=True
+        )
 
-        # 6. Append triggered hard-cap warnings to confidence reasoning
+        # Handle exceptions gracefully
+        if isinstance(reasons, Exception):
+            print(f"[TRUST-SCORE] Reasoning failed: {reasons}")
+            reasons = ["Unable to generate forensic reasoning (service unavailable)."]
+        if isinstance(actions, Exception):
+            print(f"[TRUST-SCORE] Recommendations failed: {actions}")
+            actions = ["Contact your bank immediately if you've already transferred money."]
+        if isinstance(what_to_do, Exception):
+            print(f"[TRUST-SCORE] What-to-do failed: {what_to_do}")
+            what_to_do = self.qwen._default_what_to_do(risk_level.value)
+
+        # 5. Append triggered hard-cap warnings to confidence reasoning
         if caps_triggered:
             reasons = [f"[Hard Cap] {cap}" for cap in caps_triggered] + reasons
 
