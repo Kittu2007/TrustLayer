@@ -52,3 +52,6 @@ Thumbs.db
 **/.next/
 **/out/
 **/dist/
+.env
+.env.*
+!.env.example
