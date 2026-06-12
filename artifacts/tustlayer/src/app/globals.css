@@ -1506,3 +1506,307 @@ body {
     transform: none !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════
+   TOOL SWITCHER — tab nav on product sub-pages
+   ═══════════════════════════════════════════════════ */
+
+.tool-switcher {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 12px clamp(16px, 3vw, 32px) 0;
+}
+
+.tool-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 18px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  border: 1px solid var(--border);
+  border-bottom: none;
+  background: rgba(255, 248, 238, 0.02);
+  color: var(--foreground-dim);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.tool-tab:hover {
+  color: var(--foreground-muted);
+  background: rgba(255, 248, 238, 0.05);
+  border-color: rgba(255, 248, 238, 0.18);
+}
+
+.tool-tab--active {
+  color: var(--signal);
+  background: rgba(219, 255, 74, 0.06);
+  border-color: rgba(219, 255, 74, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════
+   TOOL LAYOUT — 2-column (upload + results)
+   ═══════════════════════════════════════════════════ */
+
+.tool-layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 20px;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 3vw, 32px) 24px;
+  min-height: calc(100svh - 160px);
+  border-top: 1px solid rgba(219, 255, 74, 0.15);
+}
+
+@media (max-width: 900px) {
+  .tool-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tool-results-panel {
+  overflow-y: auto;
+  max-height: calc(100svh - 164px);
+}
+
+/* ═══════════════════════════════════════════════════
+   SCORE BREAKDOWN — per-signal point bars
+   ═══════════════════════════════════════════════════ */
+
+.score-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.score-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.score-bar-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.score-bar-label {
+  color: var(--foreground-dim);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.score-bar-pts {
+  font-size: 0.76rem;
+  font-weight: 900;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+}
+
+.score-bar-max {
+  font-size: 0.64rem;
+  opacity: 0.5;
+}
+
+.score-bar-track {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 248, 238, 0.06);
+  overflow: hidden;
+}
+
+.score-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.score-caps-row {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 77, 46, 0.06);
+  border: 1px solid rgba(255, 77, 46, 0.2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.score-caps-label {
+  color: var(--ember);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.score-caps-list {
+  color: rgba(255, 77, 46, 0.8);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════
+   FLAG CHIPS — deterministic flag display
+   ═══════════════════════════════════════════════════ */
+
+.flags-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.flag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 248, 238, 0.08);
+  background: rgba(255, 248, 238, 0.02);
+  color: var(--foreground-dim);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.flag-chip--ok {
+  opacity: 0.55;
+}
+
+.flag-chip-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--foreground-dim);
+  flex-shrink: 0;
+}
+
+.flag-chip--ok .flag-chip-dot {
+  background: #31f58b;
+  box-shadow: 0 0 5px rgba(49, 245, 139, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════
+   SIGNAL LIST — deepfake signals, etc.
+   ═══════════════════════════════════════════════════ */
+
+.signal-list {
+  padding: 0;
+  margin: 8px 0 0 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.signal-list li {
+  padding: 5px 10px 5px 14px;
+  border-left: 2px solid rgba(52, 230, 255, 0.35);
+  color: var(--foreground-muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════
+   NAVIGATION — tool links
+   ═══════════════════════════════════════════════════ */
+
+.nav-tool-link {
+  color: var(--foreground-dim) !important;
+  font-size: 0.72rem !important;
+  border: 1px solid rgba(255, 248, 238, 0.08) !important;
+  border-radius: 999px !important;
+  padding: 6px 12px !important;
+  transition: color 0.25s ease, border-color 0.25s ease, background 0.25s ease !important;
+}
+
+.nav-tool-link:hover {
+  color: var(--cyan) !important;
+  border-color: rgba(52, 230, 255, 0.3) !important;
+  background: rgba(52, 230, 255, 0.05) !important;
+}
+
+/* ═══════════════════════════════════════════════════
+   TOOL INFO CARD — sidebar info block
+   ═══════════════════════════════════════════════════ */
+
+.tool-info-card {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 248, 238, 0.02);
+}
+
+.tool-info-title {
+  margin: 0 0 10px;
+  color: var(--foreground-dim);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.tool-info-list {
+  margin: 0;
+  padding: 0 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tool-info-list li {
+  color: var(--foreground-muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════
+   DOCUMENT SCANNER — file badge
+   ═══════════════════════════════════════════════════ */
+
+.doc-file-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 248, 238, 0.02);
+}
+
+.doc-file-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.doc-file-name {
+  margin: 0 0 2px;
+  color: var(--foreground);
+  font-size: 0.80rem;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.doc-file-size {
+  margin: 0;
+  color: var(--foreground-dim);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
