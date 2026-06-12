@@ -103,14 +103,14 @@ class VPAValidatorService:
                     name_match=match,
                 )
             elif response.status_code == 400:
-                # Razorpay returns 400 for VPA not found
+                # Razorpay returns 400 for VPA not found, but also for unsupported institutional VPAs
                 resp_body = response.json()
                 if resp_body.get("error", {}).get("code") == "BAD_REQUEST_ERROR":
-                    print(f"[VPA-VALIDATOR] {upi_id} → VPA does not exist (400 bad request)")
+                    print(f"[VPA-VALIDATOR] {upi_id} → VPA unsupported or does not exist (400 bad request)")
                     return VPALookupResult(
                         upi_id=upi_id,
                         vpa_handle_valid=handle_valid,
-                        vpa_exists=False,
+                        vpa_exists=None,
                     )
                 raise ValueError(f"Razorpay 400: {resp_body}")
             else:

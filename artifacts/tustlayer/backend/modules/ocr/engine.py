@@ -21,14 +21,14 @@ def _compute_image_quality(image_bytes: bytes) -> float:
         resolution_score = min(1.0, max(0.1, pixel_count / (1080 * 1920)))
 
         bpp = file_size / max(1, pixel_count)
-        if bpp > 1.5:
+        if bpp > 0.3:
             compression_score = 1.0
-        elif bpp > 0.5:
-            compression_score = 0.8
-        elif bpp > 0.2:
-            compression_score = 0.5
+        elif bpp > 0.1:
+            compression_score = 0.9
+        elif bpp > 0.05:
+            compression_score = 0.7
         else:
-            compression_score = 0.25
+            compression_score = 0.4
 
         return round(min(1.0, max(0.05, (resolution_score * 0.4) + (compression_score * 0.6))), 3)
     except Exception:
