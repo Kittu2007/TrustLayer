@@ -154,6 +154,9 @@ importers:
 
   .:
     devDependencies:
+      '@esbuild/win32-x64':
+        specifier: ^0.27.3
+        version: 0.27.3
       prettier:
         specifier: ^3.8.3
         version: 3.8.3
@@ -750,6 +753,12 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [linux]
+
+  '@esbuild/win32-x64@0.27.3':
+    resolution: {integrity: sha512-4uJGhsxuptu3OcpVAzli+/gWusVGwZZHTlS63hh++ehExkVT8SgiEf7/uC/PclrPPkLhZqGgCTjd0VWLo6xMqA==}
+    engines: {node: '>=18'}
+    cpu: [x64]
+    os: [win32]
 
   '@eslint-community/eslint-utils@4.9.1':
     resolution: {integrity: sha512-phrYmNiYppR7znFEdqgfWHXR6NCkZEK7hwWDHZUjit/2/U0r6XvkDl0SYnoM51Hq7FhCGdLDT6zxCCOY1hexsQ==}
@@ -4587,6 +4596,8 @@ snapshots:
 
   '@esbuild/linux-x64@0.27.3':
     optional: true
+
+  '@esbuild/win32-x64@0.27.3': {}
 
   '@eslint-community/eslint-utils@4.9.1(eslint@9.39.4(jiti@2.7.0))':
     dependencies:
