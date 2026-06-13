@@ -13,7 +13,7 @@ export function CTASection() {
           <Link href="/product" className="btn-primary">
             Try TrustLayer Scanner
           </Link>
-          <a href="#" className="btn-ghost">
+          <a href="https://github.com/Kittu2007/TrustLayer/blob/main/PRODUCT.md" target="_blank" rel="noopener noreferrer" className="btn-ghost">
             View Documentation
           </a>
         </div>
