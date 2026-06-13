@@ -216,8 +216,8 @@ export function ResultsPanel({ results, isScanning }: ResultsPanelProps) {
             <div className="radar-ping" />
             <span style={{
               fontFamily: "var(--font-mono)", fontSize: "0.74rem", fontWeight: 950,
-              color: "#ffffff", letterSpacing: "0.14em", zIndex: 6,
-              background: "#050505", border: "1px solid rgba(219,255,74,0.3)", borderRadius: "999px",
+              color: "var(--foreground)", zIndex: 6,
+              background: "var(--bg)", border: "1px solid var(--border-active)", borderRadius: "999px",
               padding: "6px 14px", boxShadow: "0 4px 12px rgba(0,0,0,0.5), 0 0 10px rgba(219,255,74,0.15)",
               textShadow: "0 0 8px rgba(255,255,255,0.3)"
             }}>

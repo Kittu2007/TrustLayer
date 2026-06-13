@@ -8,7 +8,7 @@ from backend.modules.trust_score.engine import TrustScoreEngine
 from backend.modules.trust_score.escalation import RiskEscalationLayer
 from backend.modules.trust_score.reasoning import ConfidenceReasoningGenerator, RecommendationEngine
 from backend.core.ai_orchestrator import AIReasoningOrchestrator
-from backend.integrations.nvidia_client import QwenReasoningProvider, PhiReasoningProvider
+from backend.integrations.nvidia_client import LlamaReasoningProvider, PhiReasoningProvider
 
 
 class FinalDecisionAssembler:
@@ -18,7 +18,7 @@ class FinalDecisionAssembler:
     def __init__(self):
         self.engine = TrustScoreEngine()
         self.escalation = RiskEscalationLayer()
-        self.qwen = QwenReasoningProvider()
+        self.qwen = LlamaReasoningProvider()
         self.ai_orchestrator = AIReasoningOrchestrator(
             primary=self.qwen,
             fallback=PhiReasoningProvider()

@@ -4,7 +4,7 @@ Model roster:
   OCR:            nvidia/nemotron-ocr-v2             (primary OCR)
   Visual AI:      nvidia/nemotron-nano-12b-v2-vl     (4 parallel visual tasks)
   Deepfake:       hive/deepfake-image-detection
-  Reasoning:      qwen/qwen3.5-397b-a17b             (upgraded)
+  Reasoning:      meta/llama-3.3-70b-instruct        (upgraded)
   Fallback:       microsoft/phi-4-multimodal-instruct
 """
 import base64
@@ -309,14 +309,14 @@ class HiveDeepfakeDetector:
             return {"deepfake_probability": 0.0, "is_deepfake": False, "manipulation_type": "unknown", "signals": [], "error": str(e)}
 
 
-# ─── QwenReasoningProvider (upgraded to 397B) ─────────────────────────────────
+# ─── LlamaReasoningProvider (upgraded to Llama 3.3 70B) ─────────────────────────────────
 
-class QwenReasoningProvider(ReasoningProvider):
-    """Reasoning provider using qwen/qwen3.5-397b-a17b (upgraded from 122B)."""
+class LlamaReasoningProvider(ReasoningProvider):
+    """Reasoning provider using meta/llama-3.3-70b-instruct."""
 
     def __init__(self):
         self.api_url = f"{settings.NVIDIA_BASE_URL}/chat/completions"
-        self.model = settings.QWEN_MODEL
+        self.model = settings.REASONING_MODEL
         self.client = httpx.AsyncClient(timeout=30.0)
 
     @retry(
@@ -331,10 +331,10 @@ class QwenReasoningProvider(ReasoningProvider):
             "Content-Type": "application/json"
         }
         start = time.time()
-        print(f"[QWEN-397B] Requesting reasoning model '{self.model}'...")
+        print(f"[LLAMA-70B] Requesting reasoning model '{self.model}'...")
         response = await self.client.post(self.api_url, json=payload, headers=headers)
         response.raise_for_status()
-        print(f"[QWEN-397B] Response in {int((time.time()-start)*1000)}ms")
+        print(f"[LLAMA-70B] Response in {int((time.time()-start)*1000)}ms")
         return response.json()
 
     async def generate_reasons(self, context_data: Dict[str, Any]) -> List[str]:
@@ -363,7 +363,7 @@ class QwenReasoningProvider(ReasoningProvider):
             content = _strip_thinking_tags(result["choices"][0]["message"]["content"])
             return self._parse_bullets(content)
         except Exception as e:
-            print(f"[QWEN-397B] generate_reasons failed: {e}")
+            print(f"[LLAMA-70B] generate_reasons failed: {e}")
             raise e
 
     async def generate_recommendations(self, risk_level: str, context_data: Dict[str, Any]) -> List[str]:
@@ -391,7 +391,7 @@ class QwenReasoningProvider(ReasoningProvider):
             content = _strip_thinking_tags(result["choices"][0]["message"]["content"])
             return self._parse_bullets(content)
         except Exception as e:
-            print(f"[QWEN-397B] generate_recommendations failed: {e}")
+            print(f"[LLAMA-70B] generate_recommendations failed: {e}")
             raise e
 
     async def generate_what_to_do_next(self, risk_level: str, context_data: Dict[str, Any]) -> List[str]:
@@ -434,7 +434,7 @@ class QwenReasoningProvider(ReasoningProvider):
                         return [str(s).strip() for s in parsed[key] if str(s).strip()]
             return self._parse_bullets(content)
         except Exception as e:
-            print(f"[QWEN-397B] generate_what_to_do_next failed: {e}")
+            print(f"[LLAMA-70B] generate_what_to_do_next failed: {e}")
             raise e
 
     @staticmethod
@@ -599,8 +599,8 @@ class PhiReasoningProvider(ReasoningProvider):
                         return [str(s).strip() for s in parsed[key] if str(s).strip()]
             return self._parse_bullets(content)
         except Exception:
-            # Fall back to Qwen's static default logic as fallback
-            return QwenReasoningProvider._default_what_to_do(risk_level)
+            # Fall back to Llama's static default logic as fallback
+            return LlamaReasoningProvider._default_what_to_do(risk_level)
 
     def _parse_bullets(self, content: str) -> List[str]:
         if not content:
