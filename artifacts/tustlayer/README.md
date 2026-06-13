@@ -3,6 +3,8 @@
 > **The Trust Verification Layer for Digital Payments**
 > 
 > TrustLayer AI is a premium, high-fidelity security scanner designed to detect, analyze, and flag counterfeit UPI payment screenshots and digital transaction receipts. Using a hybrid system of deterministic color/layout forensics, deep metadata history audits, and multi-model visual AI reasoning, TrustLayer AI protects merchants from cloned screens and receipt tampering.
+>
+> 📖 **[Read the Full Product Documentation & Case Study](file:///C:/Users/chait/Desktop/Winnovx/artifacts/tustlayer/PRODUCT.md)**
 
 ---
 

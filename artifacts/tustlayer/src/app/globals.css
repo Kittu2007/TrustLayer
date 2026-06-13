@@ -45,6 +45,7 @@
   --warn: #ffb22e;
   --danger-light: #ffb59d;
   --text-inverse: #0a0b06;
+  --shadow-rgb: 0, 0, 0;
 }
 
 [data-theme="light"] {
@@ -79,6 +80,7 @@
   --warn: #f59e0b;
   --danger-light: #ef4444;
   --text-inverse: #ffffff;
+  --shadow-rgb: 16, 185, 129;
 }
 
 @theme inline {
@@ -296,7 +298,7 @@ body {
   letter-spacing: -0.02em;
   text-transform: uppercase;
   text-wrap: balance;
-  filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 18px 36px rgba(var(--shadow-rgb), 0.5));
 }
 
 .hero-headline .accent {
@@ -335,13 +337,13 @@ body {
   text-transform: uppercase;
   text-decoration: none;
   cursor: pointer;
-  box-shadow: 0 0 36px var(--signal-glow), 0 12px 32px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 0 36px var(--signal-glow), 0 12px 32px rgba(var(--shadow-rgb), 0.28);
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .btn-primary:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 0 52px var(--signal-glow), 0 18px 42px rgba(0, 0, 0, 0.36);
+  box-shadow: 0 0 52px var(--signal-glow), 0 18px 42px rgba(var(--shadow-rgb), 0.36);
 }
 
 .btn-ghost {
@@ -396,10 +398,10 @@ body {
   border: 1px solid rgba(255, 248, 238, 0.16);
   border-radius: var(--radius-phone);
   background:
-    linear-gradient(140deg, rgba(255, 248, 238, 0.22), rgba(255, 248, 238, 0.03) 22%, rgba(0, 0, 0, 0.96) 50%),
+    linear-gradient(140deg, rgba(255, 248, 238, 0.22), rgba(255, 248, 238, 0.03) 22%, rgba(var(--shadow-rgb), 0.96) 50%),
     var(--phone-shell-grad);
   box-shadow:
-    0 44px 90px rgba(0, 0, 0, 0.7),
+    0 44px 90px rgba(var(--shadow-rgb), 0.7),
     0 0 60px rgba(255, 77, 46, 0.12),
     inset 0 0 0 7px rgba(255, 255, 255, 0.03);
   padding: clamp(8px, 1vw, 14px);
@@ -455,7 +457,7 @@ body {
   border-radius: var(--radius-lg);
   background: linear-gradient(135deg, rgba(255, 248, 238, 0.1), rgba(255, 248, 238, 0.03));
   padding: clamp(14px, 1.8vw, 22px);
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+  box-shadow: 0 20px 50px rgba(var(--shadow-rgb), 0.22);
 }
 
 .phone-receipt-label {
@@ -536,7 +538,7 @@ body {
 .hero-vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 55% 45%, transparent 0%, rgba(0, 0, 0, 0.06) 35%, rgba(0, 0, 0, 0.6) 100%);
+  background: radial-gradient(circle at 55% 45%, transparent 0%, rgba(var(--shadow-rgb), 0.06) 35%, rgba(var(--shadow-rgb), 0.6) 100%);
   pointer-events: none;
 }
 
@@ -635,7 +637,7 @@ body {
 
 .scam-card:hover {
   border-color: rgba(255, 77, 46, 0.28);
-  box-shadow: 0 22px 52px rgba(0, 0, 0, 0.3), 0 0 28px var(--ember-glow);
+  box-shadow: 0 22px 52px rgba(var(--shadow-rgb), 0.3), 0 0 28px var(--ember-glow);
   transform: translateY(-4px);
 }
 
@@ -674,7 +676,7 @@ body {
   font-size: 0.78rem;
   font-weight: 700;
   line-height: 1.3;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 22px rgba(var(--shadow-rgb), 0.2);
 }
 
 .scam-stat {
@@ -771,7 +773,7 @@ body {
 
 .forensic-card:hover {
   border-color: rgba(52, 230, 255, 0.24);
-  box-shadow: 0 22px 52px rgba(0, 0, 0, 0.3), 0 0 24px var(--cyan-glow);
+  box-shadow: 0 22px 52px rgba(var(--shadow-rgb), 0.3), 0 0 24px var(--cyan-glow);
   transform: translateY(-4px);
 }
 
@@ -1095,7 +1097,7 @@ body {
 
 .product-panel:hover {
   border-color: rgba(255, 248, 238, 0.16);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  box-shadow: 0 16px 48px rgba(var(--shadow-rgb), 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
 
 .product-panel-header {
@@ -1177,7 +1179,7 @@ body {
   width: 100%;
   max-height: 180px;
   object-fit: contain;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(var(--shadow-rgb), 0.3);
 }
 
 .scan-btn {
@@ -1502,7 +1504,7 @@ body {
 .scanning-step.active {
   background: rgba(219, 255, 74, 0.04);
   border-color: rgba(219, 255, 74, 0.2);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 18px rgba(var(--shadow-rgb), 0.15);
 }
 
 .scanning-step.completed {

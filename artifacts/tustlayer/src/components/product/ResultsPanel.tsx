@@ -218,7 +218,7 @@ export function ResultsPanel({ results, isScanning }: ResultsPanelProps) {
               fontFamily: "var(--font-mono)", fontSize: "0.74rem", fontWeight: 950,
               color: "var(--foreground)", zIndex: 6,
               background: "var(--bg)", border: "1px solid var(--border-active)", borderRadius: "999px",
-              padding: "6px 14px", boxShadow: "0 4px 12px rgba(0,0,0,0.5), 0 0 10px rgba(219,255,74,0.15)",
+              padding: "6px 14px", boxShadow: "0 4px 12px rgba(var(--shadow-rgb), 0.5), 0 0 10px rgba(219,255,74,0.15)",
               textShadow: "0 0 8px rgba(255,255,255,0.3)"
             }}>
               {activeStep < 6 ? "RUNNING" : "RESOLVING"}
