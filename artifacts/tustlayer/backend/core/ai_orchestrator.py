@@ -31,6 +31,8 @@ class ReasoningProvider(Protocol):
         ...
     async def generate_recommendations(self, risk_level: str, context_data: dict) -> List[str]:
         ...
+    async def generate_what_to_do_next(self, risk_level: str, context_data: dict) -> List[str]:
+        ...
 
 class AIReasoningOrchestrator:
     def __init__(self, primary: ReasoningProvider, fallback: ReasoningProvider):
@@ -70,3 +72,22 @@ class AIReasoningOrchestrator:
             except Exception as e2:
                 print(f"[TRUSTLAYER-DEBUG] AIReasoningOrchestrator: Fallback recommendation provider failed: {e2}")
                 return ["Contact support for further assistance."]
+
+    async def get_what_to_do_next_with_fallback(self, risk_level: str, context_data: dict) -> List[str]:
+        start_time = time.time()
+        print("[TRUSTLAYER-DEBUG] AIReasoningOrchestrator: Requesting what-to-do-next steps...")
+        try:
+            res = await self.primary.generate_what_to_do_next(risk_level, context_data)
+            elapsed = int((time.time() - start_time) * 1000)
+            print(f"[TRUSTLAYER-DEBUG] AIReasoningOrchestrator: Primary What-to-do completed in {elapsed}ms.")
+            return res
+        except Exception as e:
+            print(f"[TRUSTLAYER-DEBUG] AIReasoningOrchestrator: Primary what-to-do provider failed: {e}. Falling back...")
+            try:
+                return await self.fallback.generate_what_to_do_next(risk_level, context_data)
+            except Exception as e2:
+                print(f"[TRUSTLAYER-DEBUG] AIReasoningOrchestrator: Fallback what-to-do provider failed: {e2}")
+                # Use default fallback list if both fail
+                if hasattr(self.primary, "_default_what_to_do"):
+                    return self.primary._default_what_to_do(risk_level)
+                return ["Verify receipt in bank account before handing over goods."]

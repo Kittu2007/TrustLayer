@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     OCR_MODEL: str = os.getenv("OCR_MODEL", "nvidia/nemotron-ocr-v2")
     VISUAL_AI_MODEL: str = os.getenv("VISUAL_AI_MODEL", "nvidia/nemotron-nano-12b-v2-vl")
     QWEN_MODEL: str = os.getenv("QWEN_MODEL", "qwen/qwen3.5-397b-a17b")
-    FALLBACK_MODEL: str = os.getenv("FALLBACK_MODEL", "microsoft/phi-4-multimodal-instruct")
+    FALLBACK_MODEL: str = os.getenv("FALLBACK_MODEL", "meta/llama-3.3-70b-instruct")
     DEEPFAKE_MODEL: str = os.getenv("DEEPFAKE_MODEL", "hive/deepfake-image-detection")
     CONTENT_SAFETY_MODEL: str = os.getenv("CONTENT_SAFETY_MODEL", "nvidia/nemotron-content-safety-reasoning-4b")
     LLAMA_GUARD_MODEL: str = os.getenv("LLAMA_GUARD_MODEL", "meta/llama-guard-4-12b")

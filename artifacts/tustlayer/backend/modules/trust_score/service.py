@@ -39,7 +39,7 @@ class FinalDecisionAssembler:
         # 4. AI reasoning — run ALL 3 calls in parallel (prevents 300s Vercel timeout)
         reasons_task = self.reasoning.generate_reasons(data)
         actions_task = self.recommendations.generate_recommendations(risk_level, data)
-        what_to_do_task = self.qwen.generate_what_to_do_next(risk_level.value, data.model_dump())
+        what_to_do_task = self.ai_orchestrator.get_what_to_do_next_with_fallback(risk_level.value, data.model_dump())
 
         reasons, actions, what_to_do = await asyncio.gather(
             reasons_task, actions_task, what_to_do_task,

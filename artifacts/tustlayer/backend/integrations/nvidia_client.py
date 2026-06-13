@@ -364,7 +364,7 @@ class QwenReasoningProvider(ReasoningProvider):
             return self._parse_bullets(content)
         except Exception as e:
             print(f"[QWEN-397B] generate_reasons failed: {e}")
-            return ["Unable to generate forensic reasoning (service unavailable)."]
+            raise e
 
     async def generate_recommendations(self, risk_level: str, context_data: Dict[str, Any]) -> List[str]:
         payload = {
@@ -392,7 +392,7 @@ class QwenReasoningProvider(ReasoningProvider):
             return self._parse_bullets(content)
         except Exception as e:
             print(f"[QWEN-397B] generate_recommendations failed: {e}")
-            return ["Contact your bank immediately if you've already transferred money."]
+            raise e
 
     async def generate_what_to_do_next(self, risk_level: str, context_data: Dict[str, Any]) -> List[str]:
         """
@@ -435,7 +435,7 @@ class QwenReasoningProvider(ReasoningProvider):
             return self._parse_bullets(content)
         except Exception as e:
             print(f"[QWEN-397B] generate_what_to_do_next failed: {e}")
-            return self._default_what_to_do(risk_level)
+            raise e
 
     @staticmethod
     def _default_what_to_do(risk_level: str) -> List[str]:
@@ -565,6 +565,42 @@ class PhiReasoningProvider(ReasoningProvider):
             return self._parse_bullets(content)
         except Exception:
             return ["Contact support for further assistance."]
+
+    async def generate_what_to_do_next(self, risk_level: str, context_data: Dict[str, Any]) -> List[str]:
+        payload = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a consumer fraud protection advisor in India. "
+                        "Generate 3-5 clear, plain-language 'What To Do Next' steps for a regular person "
+                        "who received this payment screenshot. Each step max 20 words. "
+                        "Return as a JSON array of strings."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": f"Risk Level: {risk_level}\nContext: {json.dumps(context_data)}\nReturn JSON array of what-to-do-next steps."
+                }
+            ],
+            "temperature": 0.4,
+            "max_tokens": 500
+        }
+        try:
+            result = await self._make_request(payload)
+            content = _strip_thinking_tags(result["choices"][0]["message"]["content"])
+            parsed = _extract_json_from_content(content)
+            if isinstance(parsed, list):
+                return [str(s).strip() for s in parsed if str(s).strip()]
+            if isinstance(parsed, dict):
+                for key in ["steps", "actions", "next_steps", "what_to_do"]:
+                    if key in parsed and isinstance(parsed[key], list):
+                        return [str(s).strip() for s in parsed[key] if str(s).strip()]
+            return self._parse_bullets(content)
+        except Exception:
+            # Fall back to Qwen's static default logic as fallback
+            return QwenReasoningProvider._default_what_to_do(risk_level)
 
     def _parse_bullets(self, content: str) -> List[str]:
         if not content:
