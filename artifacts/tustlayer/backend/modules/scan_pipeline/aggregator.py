@@ -200,9 +200,11 @@ class ResultAggregator:
             exif_editing = exif_result.editing_software_found
             exif_software_name = exif_result.editing_software_name
             effective_metadata_anomalies = exif_result.anomaly_count
+            exif_missing = not exif_result.exif_present
         else:
             exif_editing = False
             exif_software_name = None
+            exif_missing = False
             effective_metadata_anomalies = metadata_anomalies
 
         # ── App branding ──────────────────────────────────────────────────────
@@ -248,8 +250,9 @@ class ResultAggregator:
             app_forensics.app_authenticity_score
         )
 
-        # ── Deepfake ──────────────────────────────────────────────────────────
+        # ── Deepfake & ELA ────────────────────────────────────────────────────
         deepfake_detected = deepfake_score > 0.30
+        ela_score = getattr(app_forensics, 'ela_anomaly_score', 0.0)
 
         return TrustScoreInput(
             # v1 fields (backward compat)
@@ -276,7 +279,9 @@ class ResultAggregator:
             amount_plausible=amount_plausible,
             exif_editing_software=exif_editing,
             exif_software_name=exif_software_name,
+            exif_missing=exif_missing,
             app_branding_match=app_branding_match,
+            ela_score=ela_score,
             deepfake_score=deepfake_score,
             deepfake_detected=deepfake_detected,
             timestamp_valid=timestamp_valid,

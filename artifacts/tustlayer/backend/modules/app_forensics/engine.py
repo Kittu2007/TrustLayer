@@ -40,11 +40,58 @@ class AppForensicsEngine:
             print(f"[APP-FORENSICS] Padding crop warning: {e}")
         return img
 
+    def _calculate_ela_score(self, img: Image.Image) -> float:
+        """
+        Performs Error Level Analysis (ELA) to detect pixel-level modifications.
+        Saves the image at a known JPEG quality (90) and calculates the difference.
+        Returns an anomaly score between 0.0 and 1.0 based on the maximum error level.
+        """
+        try:
+            from PIL import ImageChops, ImageStat
+            
+            # Convert to RGB if not already
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+                
+            # Save at 90 quality to memory buffer
+            buffer = io.BytesIO()
+            img.save(buffer, 'JPEG', quality=90)
+            buffer.seek(0)
+            
+            # Reload the re-compressed image
+            resaved_img = Image.open(buffer)
+            
+            # Calculate absolute difference
+            ela_img = ImageChops.difference(img, resaved_img)
+            
+            # Get the extrema (min, max) for each band (R, G, B)
+            extrema = ela_img.getextrema()
+            
+            # Find the absolute maximum difference across all bands
+            max_diff = max([ex[1] for ex in extrema])
+            
+            # If max diff is extremely high, it indicates localized tampering
+            # A typical unmodified screenshot might have max_diff around 15-30
+            # A tampered screenshot often has max_diff > 60-100
+            
+            # Normalize to a 0.0 - 1.0 score
+            # Cap at 120 difference as 1.0
+            anomaly_score = min(max_diff / 120.0, 1.0)
+            
+            print(f"[APP-FORENSICS] ELA Max Diff: {max_diff} -> Score: {anomaly_score:.2f}")
+            return float(anomaly_score)
+        except Exception as e:
+            print(f"[APP-FORENSICS] ELA Calculation error: {e}")
+            return 0.0
+
     def analyze(self, image_bytes: bytes, raw_text: str, claimed_app: str = None) -> AppForensicsResult:
         try:
             # 1. Parse Image and crop solid border padding
             orig_img = Image.open(io.BytesIO(image_bytes))
             img = self._crop_padding(orig_img)
+            
+            # 1b. Calculate ELA
+            ela_score = self._calculate_ela_score(img)
             
             width, height = img.size
             aspect_ratio = height / width if width > 0 else 0
@@ -367,6 +414,7 @@ class AppForensicsEngine:
                 layout_consistency=layout_consistency,
                 font_consistency=font_consistency,
                 suspected_clone=suspected_clone,
+                ela_anomaly_score=ela_score,
                 forensic_explanation=explanation
             )
 
@@ -379,5 +427,6 @@ class AppForensicsEngine:
                 layout_consistency="LOW",
                 font_consistency="INCONSISTENT",
                 suspected_clone=True,
+                ela_anomaly_score=1.0,
                 forensic_explanation=f"Forensic engine encountered internal parsing error: {e}"
             )

@@ -69,7 +69,6 @@ class MetadataService:
         try:
             image = Image.open(io.BytesIO(image_bytes))
 
-            # ── 1. EXIF Tag Analysis ──────────────────────────────────────────
             exif_data = image.getexif() if hasattr(image, "getexif") else None
             if exif_data:
                 result.exif_present = True

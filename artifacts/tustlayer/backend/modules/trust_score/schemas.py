@@ -44,11 +44,13 @@ class TrustScoreInput(BaseModel):
     amount_plausible: bool = Field(default=True, description="Amount is within ₹1–₹10,00,000 and uses ₹ symbol")
 
     # EXIF / Metadata layer
+    exif_missing: bool = Field(default=False, description="True if no EXIF data was found")
     exif_editing_software: bool = Field(default=False, description="EXIF Software tag contains known editing tool")
     exif_software_name: Optional[str] = Field(default=None, description="Name of detected editing software")
 
     # App branding / forensics layer
     app_branding_match: bool = Field(default=False, description="Color fingerprint matches claimed payment app")
+    ela_score: float = Field(default=0.0, description="Error Level Analysis anomaly score 0-1")
 
     # Deepfake detection layer
     deepfake_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Hive deepfake confidence 0–1")

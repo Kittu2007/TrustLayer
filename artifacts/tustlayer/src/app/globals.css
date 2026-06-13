@@ -48,36 +48,36 @@
 }
 
 [data-theme="light"] {
-  --bg: #fafafa;
-  --bg-elevated: #f4f4f3;
-  --bg-card: rgba(16, 17, 11, 0.03);
-  --bg-glass: rgba(244, 244, 243, 0.88);
-  --foreground: #10110b;
-  --foreground-muted: rgba(16, 17, 11, 0.68);
-  --foreground-dim: rgba(16, 17, 11, 0.44);
-  --signal: #2563eb;
-  --signal-glow: rgba(37, 99, 235, 0.15);
-  --ember: #dc2626;
-  --ember-glow: rgba(220, 38, 38, 0.15);
-  --cyan: #0891b2;
-  --cyan-glow: rgba(8, 145, 178, 0.15);
-  --border: rgba(16, 17, 11, 0.08);
-  --border-active: rgba(37, 99, 235, 0.35);
-  --nav-bg: linear-gradient(180deg, rgba(250, 250, 250, 0.96) 0%, rgba(250, 250, 250, 0.68) 60%, transparent 100%);
+  --bg: #ffffff;
+  --bg-elevated: #f8fafc;
+  --bg-card: rgba(15, 23, 42, 0.02);
+  --bg-glass: rgba(255, 255, 255, 0.90);
+  --foreground: #0f172a;
+  --foreground-muted: #475569;
+  --foreground-dim: #94a3b8;
+  --signal: #0ea5e9;
+  --signal-glow: rgba(14, 165, 233, 0.15);
+  --ember: #ef4444;
+  --ember-glow: rgba(239, 68, 68, 0.15);
+  --cyan: #06b6d4;
+  --cyan-glow: rgba(6, 182, 212, 0.15);
+  --border: #e2e8f0;
+  --border-active: #0ea5e9;
+  --nav-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 255, 255, 0.68) 60%, transparent 100%);
 
-  /* Section Gradients - Light Mode */
-  --hero-bg-grad: linear-gradient(160deg, #fafafa 0%, #f4f4f3 35%, #ebebeb 63%, #fafafa 100%);
-  --phone-shell-grad: linear-gradient(155deg, #e5e5e5, #ffffff 54%, #f0f0f0);
-  --phone-screen-grad: linear-gradient(180deg, #ffffff 0%, #f9f9f9 54%, #f0f0f0 100%);
-  --phone-notch: #10110b;
-  --scam-bg-grad: linear-gradient(180deg, var(--bg) 0%, #ebebeb 50%, var(--bg) 100%);
-  --forensic-bg-grad: linear-gradient(180deg, var(--bg) 0%, #e6ecec 50%, var(--bg) 100%);
-  --verdict-bg-grad: linear-gradient(180deg, var(--bg) 0%, #ecece6 50%, var(--bg) 100%);
-  --how-it-works-grad: linear-gradient(180deg, var(--bg), #eaeaec);
-  --signal-grad-end: #1e40af;
-  --success: #15803d;
-  --warn: #b45309;
-  --danger-light: #991b1b;
+  /* Section Gradients - Trust Signaling (Light Mode) */
+  --hero-bg-grad: linear-gradient(160deg, #ffffff 0%, #f0f9ff 35%, #e0f2fe 63%, #ffffff 100%);
+  --phone-shell-grad: linear-gradient(155deg, #f1f5f9, #ffffff 54%, #e2e8f0);
+  --phone-screen-grad: linear-gradient(180deg, #ffffff 0%, #f8fafc 54%, #f1f5f9 100%);
+  --phone-notch: #0f172a;
+  --scam-bg-grad: linear-gradient(180deg, var(--bg) 0%, #eff6ff 50%, var(--bg) 100%);
+  --forensic-bg-grad: linear-gradient(180deg, var(--bg) 0%, #f0fdfa 50%, var(--bg) 100%);
+  --verdict-bg-grad: linear-gradient(180deg, var(--bg) 0%, #f8fafc 50%, var(--bg) 100%);
+  --how-it-works-grad: linear-gradient(180deg, var(--bg), #f0f9ff);
+  --signal-grad-end: #0284c7;
+  --success: #10b981;
+  --warn: #f59e0b;
+  --danger-light: #ef4444;
   --text-inverse: #ffffff;
 }
 

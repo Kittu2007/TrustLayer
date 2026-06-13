@@ -11,4 +11,5 @@ class AppForensicsResult(BaseModel):
     layout_consistency: str = Field(..., description="HIGH, MEDIUM, LOW")
     font_consistency: str = Field(..., description="NORMAL, SUSPICIOUS, INCONSISTENT")
     suspected_clone: bool = Field(..., description="True if UI anomalies indicate a cloned interface")
+    ela_anomaly_score: float = Field(0.0, description="Error Level Analysis max anomaly score (0.0 to 1.0)")
     forensic_explanation: str = Field(..., description="Detailed explanation of the findings")

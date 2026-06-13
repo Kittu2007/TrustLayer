@@ -26,7 +26,9 @@ CAP_FOREIGN_CURRENCY   = 10   # $ € £ in receipt
 CAP_UTR_FORMAT_WRONG   = 15   # UTR present but not 12 digits
 CAP_FRAUD_TEMPLATE     = 5    # Known scam pHash match > 0.80
 CAP_EXIF_EDITING       = 40   # Editing software in EXIF
+CAP_MISSING_EXIF       = 70   # Missing EXIF (high risk)
 CAP_DEEPFAKE           = 25   # Deepfake score > 0.70
+CAP_ELA_ANOMALY        = 40   # Error Level Analysis score > 0.8
 CAP_VPA_NOT_EXIST      = 20   # Razorpay says VPA does not exist
 
 
@@ -70,7 +72,10 @@ class TrustScoreEngine:
         breakdown["app_branding"] = POINTS["app_branding"] if data.app_branding_match else 0
 
         # 4. EXIF clean (+15)
-        if not data.exif_editing_software and data.metadata_anomalies_detected == 0:
+        # If ELA score is somewhat high but below hard cap, penalize EXIF points
+        if data.ela_score > 0.5:
+            breakdown["exif_clean"] = 0
+        elif not data.exif_editing_software and data.metadata_anomalies_detected == 0:
             breakdown["exif_clean"] = POINTS["exif_clean"]
         elif data.metadata_anomalies_detected <= 1 and not data.exif_editing_software:
             breakdown["exif_clean"] = POINTS["exif_clean"] // 2  # minor noise, partial
@@ -128,6 +133,16 @@ class TrustScoreEngine:
             if score > CAP_EXIF_EDITING:
                 score = CAP_EXIF_EDITING
                 triggered.append(f"Editing software in EXIF ({data.exif_software_name or 'unknown'}) → cap {CAP_EXIF_EDITING}")
+
+        if data.exif_missing:
+            if score > CAP_MISSING_EXIF:
+                score = CAP_MISSING_EXIF
+                triggered.append(f"No EXIF metadata found (suspicious for screenshot) → cap {CAP_MISSING_EXIF}")
+
+        if data.ela_score > 0.8:
+            if score > CAP_ELA_ANOMALY:
+                score = CAP_ELA_ANOMALY
+                triggered.append(f"High pixel-level error (ELA score {data.ela_score:.2f}) → cap {CAP_ELA_ANOMALY}")
 
         if data.deepfake_score > 0.70:
             if score > CAP_DEEPFAKE:
