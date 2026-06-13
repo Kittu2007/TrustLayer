@@ -1,39 +1,38 @@
-# TrustLayer AI — Payment Proof Forensics
+# TrustLayer AI
 
 > **The Trust Verification Layer for Digital Payments**
-> 
-> TrustLayer AI is a premium, high-fidelity security scanner designed to detect, analyze, and flag counterfeit UPI payment screenshots and digital transaction receipts. Using a hybrid system of deterministic color/layout forensics, deep metadata history audits, and multi-model visual AI reasoning, TrustLayer AI protects merchants from cloned screens and receipt tampering.
 >
-> 📖 **[Read the Full Product Documentation & Case Study](file:///C:/Users/chait/Desktop/Winnovx/artifacts/tustlayer/PRODUCT.md)**
+> TrustLayer AI is India's first hybrid forensic engine designed to analyze every digital artifact involved in a payment transaction — UPI screenshots, QR codes, documents, and links. Built with a deterministic-first, AI-second architecture, it returns a mathematically verifiable Trust Score and actionable guidance in under 10 seconds.
+
+**Team Hackfinity | WinnovX 2026**
+*Built on real data. Deployed at [trust-layer-tool.vercel.app](https://trust-layer-tool.vercel.app)*
+
+📖 **[Read the Full Product Documentation & Case Study](./PRODUCT.md)**
 
 ---
 
 ## 🌌 Key Highlights & Features
 
-### 1. 🔍 Advanced Visual UI-Based App Recognition
-* **Differentiated App Extraction:** Leverages state-of-the-art vision models (**NVIDIA Nemotron-VL-8B**) to classify and verify the container app by scanning branding icons, logos, header colors, and font families rather than getting confused by destination handles (e.g. a customer paying *to* a `@paytm` VPA from **Google Pay** is correctly classified as a GPay screenshot).
-* **Multi-App Footprints:** Deep color and structural layout verification for all major Indian payment platforms:
-  * **PhonePe** (Purple `#5f259f` theme matching)
-  * **Paytm** (Cyan `#00baf2` banner verification)
-  * **Google Pay** (Clean material layouts & signature confirmation checks)
-  * **FamPay** & **CRED** (Sleek dark-glassmorphic and youth-focused templates)
-  * **super.money** (Flipkart-group signature neon green success formats)
-  * **Pop UPI** (Orange success gradients)
-  * **Navi** & **Mobikwik** (Lime success metrics)
-  * **Corporate Banking Apps** (SBI YONO, HDFC, ICICI iMobile, Kotak, etc.)
+### 1. 🔍 Fake Screenshot Detector (9-Layer Pipeline)
+TrustLayer runs a 9-layer forensic pipeline simultaneously, catching both lazy fakers and sophisticated fraudsters.
+* **Deterministic Rules Engine:** Hard mathematical checks execute first. If a UTR number has 8 digits instead of 12, it's flagged instantly. No AI hallucination can override this.
+* **Visual Forensics & Branding:** Leverages **NVIDIA Nemotron Nano 12B v2 VL** to classify and verify the container app by scanning branding icons, logos, header colors, and font families.
+* **Deep Metadata History Forensics:** Scans raw binary headers (EXIF) for signature remnants of editing software like Photoshop, Canva, or Figma.
+* **AI-Generated Receipt Detection:** Identifies AI-generated deepfake receipts (DALL-E, Stable Diffusion) using a dedicated binary classifier.
+* **Network-Effect Replay Detection:** Every scanned screenshot gets a perceptual hash (pHash) stored in **Supabase**. If a fake screenshot has fooled someone before, TrustLayer catches it instantly.
 
-### 2. 🛡️ Deterministic Escalation & Hard Overrides
-* **Strict UTR Format Check:** Demands exact 12-digit Indian UPI transaction reference formatting. Counterfeits containing dummy reference IDs (e.g. `45357172`) instantly drop the Trust Score to **15/100** and trigger a **HIGH RISK** alert.
-* **Foreign Currency Protection:** UPI strictly handles Indian Rupees (`₹`). Automatic dual-insurance verification flags any foreign currency symbols (`$`, `€`, `£`, `usd`) visible in either the extracted fields or raw OCR blocks as an immediate visual tampering override.
-* **Aspect Ratio Padding Crop:** solid black/white canvas padding added by scammers is pre-cropped out, preventing canvas aspect ratio or header color counters from being bypassed.
+### 2. 🛡️ QR Code Fraud Inspector
+Decodes and verifies embedded QR payloads.
+* **UPI ID Consistency:** Checks if the QR points to a different UPI ID than what's stated in the text.
+* **Phishing URL Check:** Immediately validates any embedded URLs against Google Safe Browsing.
 
-### 3. 💾 Deep Metadata History Forensics
-* **Compression & Software Audit:** Scans raw binary headers and complete image text chunks for signature remnants of editing software (*Photoshop, Canva, PicsArt, Figma, GIMP, Snapseed, PicsArt, etc.*).
-* **Compression Profile matching:** Detects inconsistencies in pixel compression clusters indicating timestamp overlays.
+### 3. 📄 Document & Image Threat Scanner
+Extends beyond screenshots to scan PDF invoices, bank statement images, and confirmation documents.
+* **PDF Analysis (PyMuPDF):** Detects font diversity anomalies, invisible white text layers, and overlapping element replacement edits.
+* **URL Verifier & Malware Scan:** Extracts, resolves, and batch-checks URLs against Google Safe Browsing and VirusTotal.
 
-### 4. 🧠 Multi-Model AI Reasoning
-* **Paced Cinematic Diagnostics:** Renders a gorgeous neon laser-line scan overlay and conic-gradient radar sweep on the frontend, pacing the user through real-time pipeline milestones (OCR extraction -> Qwen layout check -> pixel profiling -> hash matches).
-* **Refined Bullet Explanations:** Employs **Qwen-3.5-122B** and **Phi-4** reasoning models, constrained strictly to generate short, punchy, single-sentence forensic insights.
+### 4. 🤖 WhatsApp Bot (Beta)
+India-scale distribution with zero learning curve. Users can simply forward a payment screenshot to TrustLayer's WhatsApp Business number and receive a full verdict in 10 seconds, without leaving the app.
 
 ---
 
@@ -41,23 +40,29 @@
 
 ```mermaid
 graph TD
-    A[Counterfeit or Authentic Receipt Upload] --> B[Whitespace & Black-space Pre-Cropping]
-    B --> C[NVIDIA Nemotron-VL Vision Model]
-    C -->|Visual UI Extraction| D[Identified claimed_app: Google Pay]
-    C -->|Raw OCR & UTR| E[Result Aggregator]
-    D --> F[Dominant Color Profiling & Header Check]
-    E -->|EXIF & pillow info| G[Deep Metadata Service]
-    F --> H[Layout & Theme Verification]
-    G --> I[Risk Escalation Layer]
-    H --> I
-    I -->|Deterministic Overrides| J[Final Trust Score Math]
-    J --> K[Qwen-122B & Phi-4 Reasoning]
-    K --> L[Cinematic Frontend Disclosures & Actions]
+    A[Screenshot Uploaded] --> B[PREPROCESSING<br/>Deterministic, No AI]
+    
+    B --> C1[Nemotron OCR v2<br/>Extract: UTR, VPA, Amount, Timestamp]
+    B --> C2[Nemotron Nano 12B v2 VL<br/>Verify: App branding, Layout, Fonts, Auth]
+    B --> C3[Hive Deepfake Detection<br/>Detect: AI-generated receipt]
+    
+    C1 --> D
+    C2 --> D
+    C3 --> D
+    
+    D[DETERMINISTIC RULES ENGINE<br/>UTR format, VPA registry, Timestamp logic,<br/>Amount plausibility, Razorpay live check, Supabase pHash]
+    
+    D --> E[Qwen 3.5-397B MoE<br/>Synthesize all layer outputs<br/>Generate forensic bullets & Trust Score]
+    
+    E --> F[Llama Guard 4-12B<br/>Output safety guardrails]
+    
+    F --> G[Trust Score + Verdict + Forensic Bullets + What To Do Next -> UI]
 ```
 
-* **Frontend:** Next.js (App Router), React, Tailwind-free premium Vanilla CSS (dark mode, glassmorphism, responsive micro-animations).
-* **Backend:** FastAPI, Python, Pillow (pixel manipulation & EXIF recursive analysis).
-* **AI Engine:** NVIDIA NIM APIs (Nemotron-VL, Qwen-3.5-122B, Microsoft Phi-4).
+* **Frontend:** Next.js (App Router), React, premium Vanilla CSS (dark/light mode, glassmorphism, responsive micro-animations).
+* **Backend:** FastAPI, Python, PyMuPDF, Pillow (pixel manipulation & EXIF recursive analysis).
+* **AI Engine:** NVIDIA NIM APIs (Nemotron OCR v2, Nemotron Nano 12B v2 VL, Qwen 3.5-397B MoE, Meta Llama Guard, Microsoft Phi-4).
+* **Database & Auth:** Supabase (Postgres, pHash storage, event logging).
 
 ---
 
