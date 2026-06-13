@@ -399,7 +399,7 @@ export function ResultsPanel({ results, isScanning }: ResultsPanelProps) {
             <div className="score-bar-meta">
               <span className="score-bar-label">AI Manipulation Probability</span>
               <span className="score-bar-pts" style={{
-                color: (deepfakePct ?? 0) > 70 ? "#ff4d2e" : (deepfakePct ?? 0) > 40 ? "#ffb22e" : "#31f58b"
+                color: (deepfakePct ?? 0) > 70 ? "var(--ember)" : (deepfakePct ?? 0) > 40 ? "var(--warn)" : "var(--success)"
               }}>
                 {deepfakePct}%
               </span>
@@ -408,11 +408,11 @@ export function ResultsPanel({ results, isScanning }: ResultsPanelProps) {
               <div className="score-bar-fill" style={{
                 width: `${deepfakePct}%`,
                 background: (deepfakePct ?? 0) > 70
-                  ? "linear-gradient(90deg, #ff4d2eaa, #ff4d2e)"
+                  ? "var(--ember)"
                   : (deepfakePct ?? 0) > 40
-                  ? "linear-gradient(90deg, #ffb22eaa, #ffb22e)"
-                  : "linear-gradient(90deg, #31f58baa, #31f58b)",
-                boxShadow: (deepfakePct ?? 0) > 70 ? "0 0 8px rgba(255,77,46,0.4)" : "0 0 8px rgba(49,245,139,0.3)",
+                  ? "var(--warn)"
+                  : "var(--success)",
+                boxShadow: (deepfakePct ?? 0) > 70 ? "0 0 8px var(--ember-glow)" : "0 0 8px var(--signal-glow)",
               }} />
             </div>
           </div>
@@ -478,8 +478,8 @@ export function ResultsPanel({ results, isScanning }: ResultsPanelProps) {
           OCR Data
           <span style={{
             fontSize: "0.68rem", fontWeight: 400, padding: "2px 8px", borderRadius: "10px",
-            background: ocrPct >= 70 ? "rgba(49,245,139,0.10)" : ocrPct >= 40 ? "rgba(255,178,46,0.10)" : "rgba(255,100,80,0.10)",
-            color: ocrPct >= 70 ? "#31f58b" : ocrPct >= 40 ? "#ffb22e" : "#ff6450",
+            background: ocrPct >= 70 ? "var(--signal-glow)" : ocrPct >= 40 ? "rgba(255,178,46,0.10)" : "var(--ember-glow)",
+            color: ocrPct >= 70 ? "var(--success)" : ocrPct >= 40 ? "var(--warn)" : "var(--ember)",
           }}>
             {ocrPct}% confidence
           </span>
@@ -578,10 +578,11 @@ function FlagChip({ label, active, danger, warn, detail }: {
       {label}
     </div>
   );
-  const color = danger ? "#ff4d2e" : warn ? "#ffb22e" : "#31f58b";
+  const colorVar = danger ? "var(--ember)" : warn ? "var(--warn)" : "var(--success)";
+  const bgVar = danger ? "var(--ember-glow)" : warn ? "rgba(255, 178, 46, 0.15)" : "var(--signal-glow)";
   return (
-    <div className="flag-chip flag-chip--active" style={{ borderColor: `${color}44`, background: `${color}0d`, color }}>
-      <span className="flag-chip-dot" style={{ background: color, boxShadow: `0 0 6px ${color}` }} />
+    <div className="flag-chip flag-chip--active" style={{ borderColor: colorVar, background: bgVar, color: colorVar }}>
+      <span className="flag-chip-dot" style={{ background: colorVar, boxShadow: `0 0 6px ${colorVar}` }} />
       {label}{detail ? ` (${detail})` : ""}
     </div>
   );

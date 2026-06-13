@@ -250,13 +250,14 @@ class HiveDeepfakeDetector:
     """
 
     SYSTEM_PROMPT = (
-        "You are an image forensics expert. Analyze the provided image for signs of AI generation, "
-        "deepfake manipulation, face swapping, splicing, or digital enhancement. "
+        "You are an image forensics expert specializing in payment screenshots and documents. "
+        "Analyze the provided image for signs of digital tampering, AI generation, text splicing, "
+        "font inconsistencies, or alignment anomalies. "
         "Return ONLY a JSON object with these fields: "
         "{\"deepfake_probability\": 0.0-1.0, \"is_deepfake\": bool, \"manipulation_type\": \"string\", \"signals\": [\"...\"]} "
-        "where manipulation_type is one of: none, face_swap, image_generation, splicing, enhancement, unknown. "
-        "For UPI payment screenshots, focus on pixel-level anomalies, inconsistent rendering, "
-        "and signs of image editing. Most genuine screenshots will have probability < 0.1."
+        "where manipulation_type is one of: none, text_tampering, clone_generator, splicing, AI_generation, unknown. "
+        "Focus purely on pixel-level anomalies, inconsistent text rendering, uneven spacing, "
+        "and signs of screenshot editing. Most genuine screenshots will have probability < 0.1."
     )
 
     def __init__(self):
